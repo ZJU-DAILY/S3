@@ -103,3 +103,6 @@ ENV/
 .idea
 
 checkpoints/*.pt
+datsets/
+evaluation/
+
