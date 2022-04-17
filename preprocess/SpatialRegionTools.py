@@ -268,9 +268,9 @@ class SpacialRegion:
 # var_b = pickle.dumps(region)
 # with open('pickle.txt', 'wb') as f:
 #     pickle.dump(var_b, f)
-with open('pickle.txt', 'rb') as f:
-    region = pickle.load(f)
-region = pickle.loads(region)
+# with open('pickle.txt', 'rb') as f:
+#     region = pickle.load(f)
+# region = pickle.loads(region)
 
 # def getRegionInstance():
 #     with open('pickle.txt', 'rb') as f:
