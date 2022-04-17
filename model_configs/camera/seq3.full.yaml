@@ -1,5 +1,5 @@
 checkpoint_interval: 300 # how often (batches) to save a checkpoint
-eval_interval: 200        # how often (batches) to evaluate the model on the dev set
+eval_interval: 400        # how often (batches) to evaluate the model on the dev set
 #eval_interval: 10
 log_interval: 100          # how often (batches) to log the training process to console
 batch_size: 128           # size of a batch-128
@@ -18,7 +18,7 @@ weight_decay: 0.  # Weight decay value of the optimizer
 prior:
 
 data:
-  base_dir: /mnt/c/Users/DELL/Desktop/seq3-master/seq3-master/datasets
+  base_dir: ../../datasets
   train_path: train.src # path to the training data (only source!!!)
   val_path: val.src  # path to the source validation data
   ref_path: eval.src    # path to the target development data (验证集，dev set)

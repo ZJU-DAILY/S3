@@ -21,15 +21,15 @@ from SpatialRegionTools import SpacialRegion
 
 
 def createTrainVal(region, trjfile,
-                   ntrain=60000, nval=20000, neval=20000,
+                   ntrain=600000, nval=200000, neval=200000,
                    min_length=15, max_length=50):
     # seq2str(seq) = join(map(string, seq), " ") * "\n"
 
     with open(trjfile, "r") as f:
         ss = f.readlines()
-        trainsrc = open("dataset/train.src", "w")
-        validsrc = open("dataset/val.src", "w")
-        evalsrc = open("dataset/eval.src", "w")
+        trainsrc = open("../datasets/train.src", "w")
+        validsrc = open("../datasets/val.src", "w")
+        evalsrc = open("../datasets/eval.src", "w")
 
         for i in range(ntrain + nval + neval):
             trip = str2trip(ss[i])
@@ -55,4 +55,4 @@ def createTrainVal(region, trjfile,
 with open('pickle.txt', 'rb') as f:
     var_a = pickle.load(f)
 region = pickle.loads(var_a)
-createTrainVal(region, "porto.pos")
+createTrainVal(region, "../datasets/porto.pos")

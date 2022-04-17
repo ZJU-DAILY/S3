@@ -1,6 +1,6 @@
 from SpatialRegionTools import cell2gps
 from SpatialRegionTools import str2trip
-from SpatialRegionTools import SpacialRegion
+from SpatialRegionTools import getRegionInstance
 import numpy as np
 from sklearn.neighbors import KDTree
 from matplotlib import pyplot as plt
@@ -88,11 +88,11 @@ def plotHotcellTrj(region, filepath):
     plt.show()
 
 
-with open('pickle.txt', 'rb') as f:
-    var_a = pickle.load(f)
-region = pickle.loads(var_a)
+# with open('pickle.txt', 'rb') as f:
+#     reg = pickle.load(f)
+region = getRegionInstance()
 
-plotCompress(region, "dataset/compress")
+plotCompress(region, "../datasets/compress")
 # plotHotcellTrj(region,"dataset/test")
 # plotGPS(region,
 #         "182028 183318 183965 185256 186547 187838 189774 190420 191065 193000 194935 196870 197516")

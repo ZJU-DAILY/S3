@@ -149,7 +149,7 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
         batch_size, seq_len = inputs.size()
 
         if latent_lengths is not None:
-            max_length = max(latent_lengths)
+            max_length = int(max(latent_lengths).item())
         else:
             max_length = seq_len + pad
 

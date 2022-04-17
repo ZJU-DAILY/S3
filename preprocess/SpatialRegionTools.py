@@ -102,7 +102,7 @@ def makeVocab(region, trjfile):
         for j in s2:
             j = j.strip(',')
             j = j.strip('[')
-            if j is '':
+            if j == '':
                 continue
             x, y = j.split(',')
             x = float(x)
@@ -268,8 +268,15 @@ class SpacialRegion:
 # var_b = pickle.dumps(region)
 # with open('pickle.txt', 'wb') as f:
 #     pickle.dump(var_b, f)
+with open('pickle.txt', 'rb') as f:
+    region = pickle.load(f)
+region = pickle.loads(region)
 
-
+# def getRegionInstance():
+#     with open('pickle.txt', 'rb') as f:
+#         region = pickle.load(f)
+#     region = pickle.loads(region)
+#     return region
 
 # 将轨迹变成对应的字符串输出
 def seq2str(seq):
@@ -294,7 +301,7 @@ def str2trip(ss):
     for j in s2:
         j = j.strip(',')
         j = j.strip('[')
-        if j is '':
+        if j == '':
             continue
         x, y = j.split(',')
         x = float(x)
