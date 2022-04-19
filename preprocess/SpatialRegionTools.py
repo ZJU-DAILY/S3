@@ -258,16 +258,16 @@ class SpacialRegion:
         numy = round(self.maxy - self.miny, 6) / ystep
         self.numy = int(math.ceil(numy))
 
+def createVocab_save():
+    # 构建词表以及kdtree
+    region = SpacialRegion(minlon=-8.735152, minlat=40.953673, maxlon=-8.156309,
+                           maxlat=41.307945, xstep=100.0, ystep=100.0, minfreq=100,
+                           maxvocab_size=40000, k=10, vocab_start=4)
+    makeVocab(region, "../datasets/porto.pos")
 
-# 构建词表以及kdtree
-# region = SpacialRegion(minlon=-8.735152, minlat=40.953673, maxlon=-8.156309,
-#                        maxlat=41.307945, xstep=100.0, ystep=100.0, minfreq=100,
-#                        maxvocab_size=40000, k=10, vocab_start=4)
-# makeVocab(region, "porto.pos")
-#
-# var_b = pickle.dumps(region)
-# with open('pickle.txt', 'wb') as f:
-#     pickle.dump(var_b, f)
+    var_b = pickle.dumps(region)
+    with open('pickle.txt', 'wb') as f:
+        pickle.dump(var_b, f)
 # with open('pickle.txt', 'rb') as f:
 #     region = pickle.load(f)
 # region = pickle.loads(region)

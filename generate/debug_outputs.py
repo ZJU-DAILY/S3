@@ -7,7 +7,7 @@ from sys_config import DATA_DIR, BASE_DIR
 from generate.utils import compress_seq3
 from utils.viz import seq3_attentions
 
-checkpoint = "seq3.full_5_3600"
+checkpoint = "seq3.full"
 seed = 1
 device = "cpu"
 verbose = True

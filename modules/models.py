@@ -167,12 +167,15 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
         dec_init = self._bridge(self.src_bridge, hn_enc1, src_lengths,
                                 trg_seq_len)
         inp_fake = self._fake_inputs(inputs, trg_seq_len)
+        # dec1_results = self.compressor(inp_fake, outs_enc1, dec_init,
+        #                                argmax=True,
+        #                                enc_lengths=src_lengths,
+        #                                sampling_prob=1.,
+        #                                desired_lengths=trg_seq_len)
         dec1_results = self.compressor(inp_fake, outs_enc1, dec_init,
-                                       argmax=True,
                                        enc_lengths=src_lengths,
                                        sampling_prob=1.,
                                        desired_lengths=trg_seq_len)
-
         return enc1_results, dec1_results
     # latent_length应该就是论文中的M
     def forward(self, inp_src, inp_trg,

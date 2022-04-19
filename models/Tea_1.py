@@ -407,7 +407,7 @@ lowest_loss = None
 
 def save_best():
     global lowest_loss
-    if not lowest_loss or exp.get_metric("eval_loss").values[0] < lowest_loss:
+    if not lowest_loss or exp.get_metric("eval_loss").values[-1] < lowest_loss:
         loss = exp.get_metric("eval_loss").values[-1]
         print("Update loss to: ", loss)
         lowest_loss = loss

@@ -1,19 +1,6 @@
-#
-# with open('porto.pos', 'r') as f:
-#     ss = f.readlines()
-#     for s in ss:
-#         s1 = s[1:len(s) - 2]
-#         s2 = s1.split("]")
-#         for j in s2:
-#             j = j.strip(',')
-#             j = j.strip('[')
-#             if j is '':
-#                 continue
-#             x, y = j.split(',')
-#             # print(float(x), float(y))
 import pickle
 
-from SpatialRegionTools import trip2seq, str2trip, seq2str
+from SpatialRegionTools import trip2seq, str2trip, seq2str, createVocab_save
 import numpy as np
 from SpatialRegionTools import SpacialRegion
 
@@ -21,8 +8,8 @@ from SpatialRegionTools import SpacialRegion
 
 
 def createTrainVal(region, trjfile,
-                   ntrain=600000, nval=200000, neval=200000,
-                   min_length=15, max_length=50):
+                   ntrain=480000, nval=160000, neval=160000,
+                   min_length=15, max_length=30):
     # seq2str(seq) = join(map(string, seq), " ") * "\n"
 
     with open(trjfile, "r") as f:
@@ -48,10 +35,10 @@ def createTrainVal(region, trjfile,
                 evalsrc.write(trg_str)
 
             if i % 10000 == 0:
-                print("Scaned %i trips...", i)
+                print("Scaned ",i," trips...")
         trainsrc.close(), validsrc.close(), evalsrc.close()
 
-
+createVocab_save()
 with open('pickle.txt', 'rb') as f:
     var_a = pickle.load(f)
 region = pickle.loads(var_a)
