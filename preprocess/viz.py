@@ -4,6 +4,7 @@ from SpatialRegionTools import str2trip
 import numpy as np
 from sklearn.neighbors import KDTree
 import matplotlib as mpl
+
 mpl.use('Agg')
 from matplotlib import pyplot as plt
 import math
@@ -55,8 +56,10 @@ def SEDsimilarity(region, src, trg):
                 f += 1
     return maxSED
 
+
 def getCompress(region, src, trg):
     epi = 0.005
+    # epi = 0
     data = np.zeros([len(src), 2])
     # 给id一个时间顺序
     mp = {}
@@ -103,31 +106,30 @@ def plotCompress(region, filepath):
         data_offset[i, :] = [x + offset, y]
         i += 1
     # plt.plot(data, color='r')
-    tree = KDTree(data)
     trg_x = []
     trg_y = []
 
     i = 0
 
-    trg, trg_x_ori, trg_y_ori = getCompress(region,src,trg)
+    trg, trg_x_ori, trg_y_ori = getCompress(region, src, trg)
     for p in trg:
         x, y = cell2gps(region, int(p))
         trg_x.append(x), trg_y.append(y)
         plt.text(x, y, str(i + 1), fontdict={'size': '8', 'color': 'b'})
         i += 1
     print("压缩后轨迹的长度： ", i)
-    loss = SEDsimilarity(region,src,trg)
-    print("轨迹SED相似度误差",loss)
+    loss = SEDsimilarity(region, src, trg)
+    print("轨迹SED相似度误差", loss)
     # data_offset = data
     # data_offset[:, 0] += offset
 
     # plt.scatter(data_offset[:, 0].tolist(), data_offset[:, 1].tolist(), color='r')
     plt.scatter(data[:, 0].tolist(), data[:, 1].tolist(), color='r')
     plt.plot(data[:, 0].tolist(), data[:, 1].tolist(), color='r')
-    plt.plot(trg_x, trg_y, color='y',ls='dotted')
+    plt.plot(trg_x, trg_y, color='y', ls='dotted')
     plt.scatter(trg_x, trg_y, color='b')
 
-    plt.scatter(trg_x_ori, trg_y_ori, color='g')
+    # plt.scatter(trg_x_ori, trg_y_ori, color='g')
     # plt.show()
     plt.savefig("image.png")
     plt.close()

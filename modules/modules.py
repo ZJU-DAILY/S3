@@ -150,6 +150,7 @@ def drop_tokens(embeddings, word_dropout):
     embeddings = embeddings * mask.unsqueeze(-1).expand_as(embeddings).float()
     return embeddings, mask
 
+
 #         self.encoder = RNNModule(input_size=self.emb_size,
 #                                  rnn_size=self.rnn_size,
 #                                  num_layers=self.rnn_layers,
@@ -265,7 +266,8 @@ class RNNModule(nn.Module, RecurrentHelper):
 
         return outputs, hidden
 
-# 模型1/2，即模型的decoder部分
+
+# 模型1/2，即模型的encoder部分
 class SeqReader(nn.Module, RecurrentHelper):
     def __init__(self, ntokens, **kwargs):
         super(SeqReader, self).__init__()
@@ -369,7 +371,8 @@ class SeqReader(nn.Module, RecurrentHelper):
         else:
             return outputs, hidden
 
-# 模型2/2
+
+# 模型2/2，即模型的decoder部分
 class AttSeqDecoder(nn.Module):
     def __init__(self, trg_ntokens, enc_size, **kwargs):
         super(AttSeqDecoder, self).__init__()
@@ -529,7 +532,9 @@ class AttSeqDecoder(nn.Module):
                     dist = gumbel_softmax(logits[-1].squeeze(), tau, hard)
                 else:
                     dist = straight_softmax(logits[-1].squeeze(), tau, hard)
-
+                # A = logits[-1].squeeze()
+                # print(A.max(-1)[1])
+                # print(dist.max(-1)[1])
                 e_i = self.embed.expectation(dist.unsqueeze(1))
                 return e_i, dist
         else:
@@ -537,7 +542,7 @@ class AttSeqDecoder(nn.Module):
             w_i = trg[:, step].unsqueeze(1)
             e_i = self.embed(w_i)
             return e_i, None
-
+    # 初始化context向量
     def _init_input_feed(self, enc_states, lengths):
 
         batch = enc_states.size(0)

@@ -1,7 +1,7 @@
 import torch
 from torch.nn import functional as F
 
-from models.seq3_losses import _kl_div, kl_length, pairwise_loss
+from models.seq3_losses import _kl_div, kl_length, pairwise_loss,sed_loss
 from models.seq3_utils import sample_lengths
 from modules.helpers import sequence_mask, avg_vectors, module_grad_wrt_loss
 from modules.training.trainer import Trainer
@@ -116,6 +116,30 @@ class Seq3Trainer(Trainer):
                                               latent_lengths)
 
         return prior_loss, prior_loss_time, logits_oracle
+
+    def _sed_loss(self, inp, dec1, src_lengths, trg_lengths):
+        pass
+        # def devect(ids, oov, strip_eos, pp):
+        #     return devectorize(ids.tolist(), vocab.id2tok, vocab.tok2id[vocab.EOS],
+        #                        strip_eos=strip_eos, oov_map=oov, pp=pp)
+        #
+        # def id2txt(ids, oov=None, lengths=None, strip_eos=True):
+        #     if lengths:
+        #         return [" ".join(x[:l]) for l, x in
+        #                 zip(lengths, devect(ids, oov, strip_eos, pp=True))]
+        #     else:
+        #         return [" ".join(x) for x in devect(ids, oov, strip_eos, pp=True)]
+        #
+        # if dec1[3] is None:
+        #     print("dec1[3] is none")
+        # compress_trj = self.model.compressor.embed.expectation(dec1[3])
+        #
+        # src = id2txt(inp_src)
+        # latent = id2txt(dec1[3].max(-1)[1])
+        #
+        # loss = sed_loss(None, inp, compress_trj)
+        #
+        # return loss
 
     def _process_batch(self, inp_x, out_x, inp_xhat, out_xhat,
                        x_lengths, xhat_lengths):

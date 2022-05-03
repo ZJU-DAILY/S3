@@ -1,6 +1,7 @@
 import torch
 from torch.nn import functional as F
-
+from SpatialRegionTools import cell2gps
+import math
 from modules.helpers import sequence_mask
 
 
@@ -94,3 +95,35 @@ def pairwise_loss(a, b, dist="cosine"):
         return - scaled_dot
     else:
         raise ValueError
+
+def getSED(region, p, start, end):
+    x, y = cell2gps(region, int(p))
+    st_x, st_y = cell2gps(region, start)
+    en_x, en_y = cell2gps(region, end)
+    #     Ax + By + C = 0
+    if en_x == st_x:
+        return abs(x - en_x)
+    A = (en_y - st_y) / (en_x - st_x)
+    B = -1
+    C = st_y - st_x * A
+    return abs(A * x + B * y + C) / math.sqrt(A * A + B * B)
+
+
+def sed_loss(region, src, trg):
+    # p为慢指针（指向trg），f为快指针（指向src）。src的长度应该大于等于trg
+    p = 0
+    f = 0
+    maxSED = -1
+    while p < len(trg) and f < len(src):
+        if trg[p] == src[f]:
+            p += 1
+            f += 1
+        else:
+            st = trg[p - 1]
+            en = trg[p]
+            while trg[p] != src[f]:
+                in_ = src[f]
+                dis = getSED(region, int(in_), int(st), int(en))
+                maxSED = max(maxSED, dis)
+                f += 1
+    return maxSED

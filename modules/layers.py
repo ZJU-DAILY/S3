@@ -30,7 +30,7 @@ class GaussianNoise(nn.Module):
                                                 str(self.mean),
                                                 str(self.stddev))
 
-# 词嵌入，此处修改成我们的轨迹点嵌入。理论上来说整个模型就可以work了，然后修改一下损失函数。
+
 class Embed(nn.Module):
     def __init__(self,
                  num_embeddings,

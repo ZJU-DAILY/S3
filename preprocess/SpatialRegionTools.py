@@ -190,7 +190,7 @@ def cell2vocab(region, cell):
         # return region.hotcell2vocab[cell]
         return cell
     else:
-        #     否则找一个最近的hot cell，返回其对应的vocab id
+        # 否则找一个最近的hot cell，返回其对应的vocab id
         hotcell = nearestHotcell(region, cell)
         return hotcell
         # return region.hotcell2vocab[hotcell]

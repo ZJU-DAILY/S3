@@ -1,10 +1,10 @@
-checkpoint_interval: 300 # how often (batches) to save a checkpoint
-eval_interval: 150        # how often (batches) to evaluate the model on the dev set. Note: eval_interval need to be smaller than train_data_size / batch_size (batch number in one epoch)
+checkpoint_interval: 5000 # how often (batches) to save a checkpoint
+eval_interval: 500        # how often (batches) to evaluate the model on the dev set. Note: eval_interval need to be smaller than train_data_size / batch_size (batch number in one epoch)
 #eval_interval: 10
-log_interval: 100          # how often (batches) to log the training process to console
-batch_size: 128           # size of a batch-128
+log_interval: 50          # how often (batches) to log the training process to console
+batch_size: 20           # size of a batch-128
 #batch_size: 20
-epochs: 5                 # number of epochs.default-5
+epochs: 7                 # number of epochs.default-5
 num_workers: 0
 
 plot_norms: True  # Plot the gradient norms of each loss wrt to the compressor
@@ -123,7 +123,7 @@ model:
 
   sampling: 0.0     # Probability of schedule-sampling to the reconstructor
   top: False        # Use argmax for sampling in the latent sequence. True not implemented!
-  hard: True        # Use Straight-Through, i.e., discretize the output distributions in the forwards pass
+  hard: False        # Use Straight-Through, i.e., discretize the output distributions in the forwards pass
   gumbel: False      # Use Gumbel-Softmax instead of softmax in the latent sequence-true
   tau: 0.5          # Temperature of the distributions in the latent sequence
   learn_tau: False  # Learn the value of the temperature, as function of the output of the decoder(s)

@@ -88,7 +88,7 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
         self.trg_bridge = nn.ModuleList([nn.Linear(enc_hidden_size,
                                                    dec_hidden_size)
                                          for _ in range(number_of_states)])
-
+    # decoder的初始输入
     def _bridge(self, bridge, hidden, src_lengths=None, trg_lengths=None):
         """Forward hidden state through bridge."""
 
@@ -154,6 +154,7 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
             max_length = seq_len + pad
 
         fakes = torch.zeros(batch_size, max_length, device=inputs.device)
+        # 将fake的数据类型转化成和inputs一样的
         fakes = fakes.type_as(inputs)
         fakes[:, 0] = self.sos
         return fakes
@@ -177,7 +178,7 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
                                        sampling_prob=1.,
                                        desired_lengths=trg_seq_len)
         return enc1_results, dec1_results
-    # latent_length应该就是论文中的M
+    # latent_length就是论文中的M
     def forward(self, inp_src, inp_trg,
                 src_lengths, latent_lengths,
                 sampling, tau=1, hard=True):
