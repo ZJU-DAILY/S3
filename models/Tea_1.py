@@ -1,6 +1,11 @@
+import sys
+import os
+root_path = os.path.abspath(__file__)
+root_path = '/'.join(root_path.split('/')[:-2])
+sys.path.append(root_path)
+
 import itertools
 import math
-import os
 import warnings
 
 import numpy
@@ -26,6 +31,10 @@ from utils.generic import number_h
 from utils.opts import seq2seq2seq_options
 from utils.training import load_checkpoint
 from utils.transfer import freeze_module
+import pickle
+from preprocess.SpatialRegionTools import SpacialRegion
+from sklearn.neighbors import KDTree
+
 # torch.backends.cudnn.enabled = False
 
 ####################################################################
@@ -39,7 +48,6 @@ opts, config = seq2seq2seq_options()
 #
 ####################################################################
 vocab = None
-
 if config["model"]["prior_loss"] and config["prior"] is not None:
     print("Loading Oracle LM ...")
     oracle_cp = load_checkpoint(config["prior"])
@@ -63,13 +71,18 @@ def giga_tokenizer(x):
 
 
 print("Building training dataset...")
-train_data = AEDataset(config["data"]["train_path"],
+with open('../preprocess/pickle.txt', 'rb') as f:
+    var_a = pickle.load(f)
+region = pickle.loads(var_a)
+# 需要保证第一个是训练集的路径，之后的顺序无所谓
+train_data = AEDataset([config["data"]["train_path"],config["data"]["val_path"]],
                        preprocess=giga_tokenizer,
                        vocab=vocab,
                        vocab_size=config["vocab"]["size"],
                        seq_len=config["data"]["seq_len"],
                        oovs=config["data"]["oovs"],
-                       swaps=config["data"]["swaps"])
+                       swaps=config["data"]["swaps"],
+                       region=region)
 
 print("Building validation dataset...")
 val_data = AEDataset(config["data"]["val_path"],
@@ -78,7 +91,8 @@ val_data = AEDataset(config["data"]["val_path"],
                      vocab_size=config["vocab"]["size"],
                      seq_len=config["data"]["seq_len"],
                      return_oov=True,
-                     oovs=config["data"]["oovs"])
+                     oovs=config["data"]["oovs"],
+                     region=region)
 
 val_data.vocab = train_data.vocab
 vocab = train_data.vocab
@@ -171,6 +185,7 @@ if config["model"]["tie_encoders"] and config["model"]["tie_decoders"]:
 ####################################################################
 
 parameters = filter(lambda p: p.requires_grad, model.parameters())
+print(parameters)
 optimizer = torch.optim.Adam(parameters,
                              lr=config["lr"],
                              weight_decay=config["weight_decay"])
@@ -200,8 +215,8 @@ exp = Experiment(opts.name, config, src_dirs=opts.source, output_dir=EXP_DIR)
 step_tags = []
 step_tags.append("REC")
 
-if config["model"]["prior_loss"] and config["prior"] is not None:
-    step_tags.append("PRIOR")
+if config["model"]["local_topic_loss"]:
+    step_tags.append("LOCAL_TOPIC")
 if config["model"]["topic_loss"]:
     step_tags.append("TOPIC")
 if config["model"]["length_loss"]:
@@ -214,7 +229,7 @@ exp.add_metric("eval_loss", "line")
 exp.add_value("grads", "text", title="gradients")
 
 exp.add_metric("c_norm", "line", title="Compressor Grad Norms",
-               tags=step_tags[:len(set(step_tags) & {"PRIOR", "TOPIC"}) + 1])
+               tags=step_tags[:len(set(step_tags) & {"LOCAL_TOPIC", "TOPIC"}) + 1])
 exp.add_value("progress", "text", title="training progress")
 exp.add_value("epoch", "text", title="epoch summary")
 exp.add_value("samples", "text", title="Samples")
@@ -240,7 +255,7 @@ def stats_callback(batch, losses, loss_list, batch_outputs):
 
         # log gradient norms
         grads = sorted(trainer.grads(), key=lambda tup: tup[1], reverse=True)
-        grads_table = tabulate(grads, numalign="right", floatfmt=".5f",
+        grads_table = tabulate(grads, numalign="right", floatfmt=".8f",
                                headers=['Parameter', 'Grad(Norm)'])
         exp.update_value("grads", grads_table)
 
@@ -277,8 +292,8 @@ def outs_callback(batch, losses, loss_list, batch_outputs):
             if "TOPIC" in step_tags:
                 exp.update_metric("c_norm", norms[loss_ids["topic"]], "TOPIC")
 
-            if "PRIOR" in step_tags:
-                exp.update_metric("c_norm", norms[loss_ids["prior"]], "PRIOR")
+            if "LOCAL_TOPIC" in step_tags:
+                exp.update_metric("c_norm", norms[loss_ids["local_topic"]], "LOCAL_TOPIC")
 
         if len(batch) == 2:
             inp = batch[0][0]
@@ -326,7 +341,7 @@ def outs_callback(batch, losses, loss_list, batch_outputs):
                 sample.append(_hyp)
                 sample.append(_pri)
             else:
-                _hyp = 'HYP', hyp[i], "0, 0, 255"
+                _hyp = 'HYP', (hyp[i], [1 if p in src[i] else 0 for p in hyp[i]]), "255, 0, 0"
                 sample.append(_hyp)
 
             if temps is not None:
@@ -343,6 +358,7 @@ def outs_callback(batch, losses, loss_list, batch_outputs):
         with open(os.path.join(EXP_DIR, f"{opts.name}.samples.html"),
                   'w') as f:
             f.write(html_samples)
+
 
 
 def eval_callback(batch, losses, loss_list, batch_outputs):
@@ -378,9 +394,9 @@ loss_ids = {}
 
 loss_weights = [config["model"]["loss_weight_reconstruction"]]
 loss_ids["reconstruction"] = len(loss_weights) - 1
-if config["model"]["prior_loss"] and config["prior"] is not None:
-    loss_weights.append(config["model"]["loss_weight_prior"])
-    loss_ids["prior"] = len(loss_weights) - 1
+if config["model"]["local_topic_loss"]:
+    loss_weights.append(config["model"]["loss_weight_local_topic"])
+    loss_ids["local_topic"] = len(loss_weights) - 1
 if config["model"]["topic_loss"]:
     loss_weights.append(config["model"]["loss_weight_topic"])
     loss_ids["topic"] = len(loss_weights) - 1

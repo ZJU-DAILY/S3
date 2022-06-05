@@ -15,6 +15,6 @@ print(len(res))
 with open('../datasets/porto.pos', 'w') as f:
     for it in res:
         i += 1
-        # if i > 100000:
-        #     break
+        if i > 100000:
+            break
         f.write(it + "\n")

@@ -1,30 +1,34 @@
 checkpoint_interval: 5000 # how often (batches) to save a checkpoint
-eval_interval: 500        # how often (batches) to evaluate the model on the dev set
+eval_interval: 500        # how often (batches) to evaluate the model on the dev set. Note: eval_interval need to be smaller than train_data_size / batch_size (batch number in one epoch)
+#eval_interval: 10
 log_interval: 50          # how often (batches) to log the training process to console
-batch_size: 128           # number of epochs
-epochs: 5                 # number of epochs
+batch_size: 20           # size of a batch-128
+#batch_size: 20
+epochs: 6                 # number of epochs.default-5
 num_workers: 0
 
 plot_norms: True  # Plot the gradient norms of each loss wrt to the compressor
 
-lr: 0.0003        # Learning rate of the optimizer
+lr: 0.001        # Learning rate of the optimizer
 weight_decay: 0.  # Weight decay value of the optimizer
 
 # The checkpoint of the pretrained LM to be used as prior.
 # Use only the prefix of the file (without .pt)
-prior: lm_giga_articles_all_10K
+#prior: lm_giga_articles_all_10K
+prior:
 
 data:
-  train_path: gigaword/train.article.txt # path to the training data (only source!!!)
-  val_path:   gigaword/dev/valid.article.filter.4K.txt  # path to the source validation data
-  ref_path:   gigaword/dev/valid.title.filter.4K.txt    # path to the target validation data
+  base_dir: ../../datasets
+  train_path: train.src # path to the training data (only source!!!)
+  val_path: val.src  # path to the source validation data
+  ref_path: eval.src    # path to the target development data (验证集，dev set)
 
   seq_len: 50   # maximum length of source texts
   oovs: 10      # number of special OOV tokens (www.aclweb.org/anthology/K18-1040)
   swaps: 0.0    # percentage of local token swaps to the source text
 
 vocab:
-  embeddings: glove.6B.100d.txt # pretrained word embeddings file
+#  embeddings: glove.6B.100d.txt # pretrained word embeddings file
   embeddings_dim: 100           # pretrained word embeddings dimensionality
   size: 15000                   # size of the vocabulary. Top-N frequent words.
 
@@ -51,21 +55,28 @@ model:
   #------------------------------------
   # Prior
   #------------------------------------
-  prior_loss: True                # enable/disable the prior loss
+  prior_loss: False                # enable/disable the prior loss
   loss_weight_prior: 0.1          # weight of the prior loss - λ_P
+
+  #------------------------------------
+  # Local Topic
+  #------------------------------------
+  local_topic_loss: True                # enable/disable the prior loss
+  loss_weight_local_topic: 10            # weight of the prior loss - λ_T
+  local_topic_distance: cosine          # distance metric for topic loss. Options: cosine, euclidean
 
   #------------------------------------
   # Topic
   #------------------------------------
-  topic_loss: False               # enable/disable the prior loss
-  loss_weight_topic: 1            # weight of the prior loss - λ_T
+  topic_loss: False                # enable/disable the prior loss
+  loss_weight_topic: 6            # weight of the prior loss - λ_T
   topic_idf: True                 # weight the input embeddings by their IDF
   topic_distance: cosine          # distance metric for topic loss. Options: cosine, euclidean
 
   #------------------------------------
   # Length
   #------------------------------------
-  length_loss: True               # enable/disable the length loss
+  length_loss: False               # enable/disable the length loss
   loss_weight_length: 0.01        # weight of the prior loss - λ_L
 
 
@@ -74,12 +85,12 @@ model:
   ################################################
   min_ratio: 0.4          # min % of the sampled summary lengths
   max_ratio: 0.6          # max % of the sampled summary lengths
-  min_length: 6           # absolute min length (words) of the sampled summary length
-  max_length: 20          # absolute max length (words) of the sampled summary length
+  min_length: 15           # absolute min length (words) of the sampled summary length
+  max_length: 30          # absolute max length (words) of the sampled summary length
   test_min_ratio: 0.5     # same as above but for inference
   test_max_ratio: 0.51    # same as above but for inference
   test_min_length: 6      # same as above but for inference
-  test_max_length: 20     # same as above but for inference
+  test_max_length: 30     # same as above but for inference
 
   ################################################
   # PARAMETER SHARING
@@ -108,7 +119,7 @@ model:
   enc_rnn_size: 300           # the size of the encoder(s)
   dec_rnn_size: 300           # the size of the decoder(s)
   rnn_layers: 2               # number of layers for encoders and decoders
-  rnn_dropout: 0.0            # dropout probability for the outputs of each RNN
+  rnn_dropout: 0.5            # dropout probability for the outputs of each RNN
   rnn_bidirectional: True     # Use bidirectional encoder(s)
   attention: True             # Use attentional seq2seq. False not implemented!
   attention_fn: general       # The attention function. Options: general, additive, concat
@@ -119,8 +130,8 @@ model:
 
   sampling: 0.0     # Probability of schedule-sampling to the reconstructor
   top: False        # Use argmax for sampling in the latent sequence. True not implemented!
-  hard: True        # Use Straight-Through, i.e., discretize the output distributions in the forwards pass
-  gumbel: True      # Use Gumbel-Softmax instead of softmax in the latent sequence
+  hard: False        # Use Straight-Through, i.e., discretize the output distributions in the forwards pass
+  gumbel: False      # Use Gumbel-Softmax instead of softmax in the latent sequence-true
   tau: 0.5          # Temperature of the distributions in the latent sequence
-  learn_tau: False  # Learn the value of the temperature, as function of the output of the decoder(s)
+  learn_tau: True  # Learn the value of the temperature, as function of the output of the decoder(s)
   tau_0: 0.5        # Hyper-parameter that controls the upper-bound of the temperature.

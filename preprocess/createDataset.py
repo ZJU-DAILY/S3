@@ -1,15 +1,11 @@
 import pickle
 
-from SpatialRegionTools import trip2seq, str2trip, seq2str, createVocab_save
-import numpy as np
-from SpatialRegionTools import SpacialRegion
-
-
+from preprocess.SpatialRegionTools import trip2seq, str2trip, seq2str, createVocab_save
 
 
 def createTrainVal(region, trjfile,
-                   ntrain=480000, nval=160000, neval=160000,
-                   min_length=15, max_length=30):
+                   ntrain=36000, nval=12000, neval=12000,
+                   min_length=15, max_length=50):
     # seq2str(seq) = join(map(string, seq), " ") * "\n"
 
     with open(trjfile, "r") as f:
@@ -17,8 +13,9 @@ def createTrainVal(region, trjfile,
         trainsrc = open("../datasets/train.src", "w")
         validsrc = open("../datasets/val.src", "w")
         evalsrc = open("../datasets/eval.src", "w")
-
-        for i in range(ntrain + nval + neval):
+        cnt = 1
+        sum_ = 0
+        for i in range(len(ss)):
             trip = str2trip(ss[i])
             if not (min_length <= len(trip) <= max_length):
                 continue
@@ -27,18 +24,27 @@ def createTrainVal(region, trjfile,
             trg_str, leng = seq2str(trg)
             if not (min_length <= leng <= max_length):
                 continue
-            if i <= ntrain:
+            sum_ += 1
+            trg_str = trg_str.strip(" ")
+            trg_str = trg_str.strip("\n")
+            trg_str = trg_str + "\n"
+            if cnt <= ntrain:
                 trainsrc.write(trg_str)
-            elif i <= ntrain + nval:
+                cnt += 1
+            elif cnt <= ntrain + nval:
                 validsrc.write(trg_str)
-            else:
+                cnt += 1
+            elif cnt <= ntrain + nval + neval:
                 evalsrc.write(trg_str)
+                cnt += 1
+            else:
+                break
 
             if i % 10000 == 0:
                 print("Scaned ",i," trips...")
         trainsrc.close(), validsrc.close(), evalsrc.close()
-
-createVocab_save()
+    print(sum_)
+# createVocab_save()
 with open('pickle.txt', 'rb') as f:
     var_a = pickle.load(f)
 region = pickle.loads(var_a)

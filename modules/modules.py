@@ -3,7 +3,7 @@ from torch import nn
 from torch.nn import functional as F
 from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
 
-from modules.helpers import straight_softmax, gumbel_softmax
+from modules.helpers import straight_softmax, gumbel_softmax, getErr, getSED
 from modules.layers import Embed, Attention
 
 
@@ -162,6 +162,7 @@ def drop_tokens(embeddings, word_dropout):
 class RNNModule(nn.Module, RecurrentHelper):
     def __init__(self, input_size,
                  rnn_size,
+                 rnn_type,
                  num_layers=1,
                  bidirectional=False,
                  dropout=0.,
@@ -186,12 +187,18 @@ class RNNModule(nn.Module, RecurrentHelper):
         if self.countdown:
             self.Wt = nn.Parameter(torch.rand(1))
             input_size += 1
-
-        self.rnn = nn.LSTM(input_size=input_size,
-                           hidden_size=rnn_size,
-                           num_layers=num_layers,
-                           bidirectional=bidirectional,
-                           batch_first=True)
+        if rnn_type == "LSTM":
+            self.rnn = nn.LSTM(input_size=input_size,
+                               hidden_size=rnn_size,
+                               num_layers=num_layers,
+                               bidirectional=bidirectional,
+                               batch_first=True)
+        elif rnn_type == "GRU":
+            self.rnn = nn.GRU(input_size=input_size,
+                          hidden_size=rnn_size,
+                          num_layers=num_layers,
+                          bidirectional=bidirectional,
+                          batch_first=True)
 
         # the dropout "layer" for the output of the RNN
         self.dropout = nn.Dropout(dropout)
@@ -283,6 +290,7 @@ class SeqReader(nn.Module, RecurrentHelper):
         # 配置参数为两层
         self.rnn_layers = kwargs.get("rnn_layers", 1)
         self.rnn_dropout = kwargs.get("rnn_dropout", .0)
+        self.rnn_type = kwargs.get("rnn_type", "LSTM")
         self.rnn_bidirectional = kwargs.get("rnn_bidirectional", False)
         self.decode = kwargs.get("decode", False)
         self.tie_weights = kwargs.get("tie_weights", False)
@@ -298,6 +306,7 @@ class SeqReader(nn.Module, RecurrentHelper):
 
         self.encoder = RNNModule(input_size=self.emb_size,
                                  rnn_size=self.rnn_size,
+                                 rnn_type=self.rnn_type,
                                  num_layers=self.rnn_layers,
                                  bidirectional=self.rnn_bidirectional,
                                  dropout=self.rnn_dropout,
@@ -374,7 +383,7 @@ class SeqReader(nn.Module, RecurrentHelper):
 
 # 模型2/2，即模型的decoder部分
 class AttSeqDecoder(nn.Module):
-    def __init__(self, trg_ntokens, enc_size, **kwargs):
+    def __init__(self, trg_ntokens, enc_size, err_control_, **kwargs):
         super(AttSeqDecoder, self).__init__()
 
         ############################################
@@ -387,7 +396,7 @@ class AttSeqDecoder(nn.Module):
         embed_dropout = kwargs.get("embed_dropout", .0)
         # 输出的特征维度，即h的维度
         rnn_size = kwargs.get("rnn_size", 100)
-        # rnn模组的数量，因为此处的数量为1，所以才可以step一次一次的调用
+        # rnn的层数
         rnn_layers = kwargs.get("rnn_layers", 1)
         rnn_dropout = kwargs.get("rnn_dropout", .0)
         tie_weights = kwargs.get("tie_weights", False)
@@ -395,10 +404,13 @@ class AttSeqDecoder(nn.Module):
         self.input_feeding = kwargs.get("input_feeding", False)
         self.learn_tau = kwargs.get("learn_tau", False)
         self.length_control = kwargs.get("length_control", False)
+        self.err_control = err_control_
         self.gumbel = kwargs.get("gumbel", False)
         self.out_non_linearity = kwargs.get("out_non_linearity", None)
         self.layer_norm = kwargs.get("layer_norm", None)
         self.input_feeding_learnt = kwargs.get("input_feeding_learnt", False)
+        self.coverage = kwargs.get("attention_coverage", False)
+        self.rnn_type = kwargs.get("rnn_type", "LSTM")
 
         ############################################
         # Layers
@@ -419,18 +431,26 @@ class AttSeqDecoder(nn.Module):
             dec_input_size += self.ho_size
         if self.length_control:
             dec_input_size += 2
-
             # length scaling parameter
             self.W_tick = nn.Parameter(torch.rand(1))
+        if self.err_control:
+            dec_input_size += 1
+            self.W_err = nn.Parameter(torch.rand(1))
 
-        self.rnn = nn.LSTM(input_size=dec_input_size,
+        if self.rnn_type == "LSTM":
+            self.rnn = nn.LSTM(input_size=dec_input_size,
                            hidden_size=rnn_size,
                            num_layers=rnn_layers,
                            batch_first=True)
+        elif self.rnn_type == "GRU":
+            self.rnn = nn.GRU(input_size=dec_input_size,
+                               hidden_size=rnn_size,
+                               num_layers=rnn_layers,
+                               batch_first=True)
 
         self.rnn_dropout = nn.Dropout(rnn_dropout)
 
-        self.attention = Attention(enc_size, rnn_size, method=attention_fn)
+        self.attention = Attention(enc_size, rnn_size, method=attention_fn, coverage=self.coverage)
 
         # learnt temperature parameter
         if self.learn_tau:
@@ -490,7 +510,7 @@ class AttSeqDecoder(nn.Module):
         return prob > 0 and torch.rand(1).item() < prob
 
     def get_embedding(self, step, trg, logits, sampling_prob, argmax, hard,
-                      tau):
+                      tau, mask_matrix):
         """
         Get the token embedding for the current timestep. Possible options:
         - select the embedding by a given index
@@ -528,13 +548,32 @@ class AttSeqDecoder(nn.Module):
                 return e_i, None
 
             else:  # get the expected embedding, parameterized by the posterior
-                if self.gumbel and self.training:
-                    dist = gumbel_softmax(logits[-1].squeeze(), tau, hard)
+                if step == 1 or step == 2:
+                    batch_size = logits[-1].size(0)
+                    class_num = logits[-1].size(2)
+                    label = trg[:, step].unsqueeze(1)
+                    m_zeros = torch.zeros(batch_size, class_num, device=logits[-1].device)
+                    dist = m_zeros.scatter(1, label, 1)
+                elif self.gumbel and self.training:
+                    if mask_matrix is not None and self._coin_flip(sampling_prob):
+                        dist = gumbel_softmax(logits[-1].squeeze(), tau, hard, target_mask=mask_matrix)
+                    else:
+                        dist = gumbel_softmax(logits[-1].squeeze(), tau, hard)
                 else:
-                    dist = straight_softmax(logits[-1].squeeze(), tau, hard)
+                    if mask_matrix is not None and self._coin_flip(sampling_prob):
+                        # mask_vector = mask_matrix
+                        # logit = logits[-1].squeeze()
+                        # mask_logit = mask_vector * logit
+                        # if mask_vector[0][0] == 1:
+                        #     print()
+                        dist = straight_softmax(logits[-1].squeeze(), tau, hard, mask_matrix)
+                    else:
+                        dist = straight_softmax(logits[-1].squeeze(), tau, hard)
+
                 # A = logits[-1].squeeze()
                 # print(A.max(-1)[1])
                 # print(dist.max(-1)[1])
+
                 e_i = self.embed.expectation(dist.unsqueeze(1))
                 return e_i, dist
         else:
@@ -542,6 +581,7 @@ class AttSeqDecoder(nn.Module):
             w_i = trg[:, step].unsqueeze(1)
             e_i = self.embed(w_i)
             return e_i, None
+
     # 初始化context向量
     def _init_input_feed(self, enc_states, lengths):
 
@@ -565,7 +605,7 @@ class AttSeqDecoder(nn.Module):
 
         return ho
 
-    def step(self, embs, enc_outputs, state, enc_lengths, ho=None, tick=None):
+    def step(self, embs, enc_outputs, state, enc_lengths, ho=None, tick=None, ec=None, attn_coverage=None):
         """
         Perform one decoding step.
         1. Construct the input. If input-feeding is used, then the input is the
@@ -598,6 +638,8 @@ class AttSeqDecoder(nn.Module):
             decoder_input = torch.cat([embs, ho], -1)
         if self.length_control:
             decoder_input = torch.cat([decoder_input, tick], -1)
+        if self.err_control and ec is not None:
+            decoder_input = torch.cat([decoder_input, ec], -1)
 
         # 2. Feed the input to the decoder
         self.rnn.flatten_parameters()
@@ -606,7 +648,7 @@ class AttSeqDecoder(nn.Module):
 
         # 3. generate the context vector
         query = outputs.squeeze(1)
-        contexts, att_scores = self.attention(enc_outputs, query, enc_lengths)
+        contexts, att_scores = self.attention(enc_outputs, query, enc_lengths, coverage=attn_coverage)
         contexts = contexts.unsqueeze(1)
 
         # 4. Re-weight the decoder's state with the context vector.
@@ -627,7 +669,8 @@ class AttSeqDecoder(nn.Module):
 
     def forward(self, gold_tokens, enc_outputs, init_hidden, enc_lengths,
                 sampling_prob=0.0, argmax=False, hard=False, tau=1.0,
-                desired_lengths=None, word_dropout=0):
+                desired_lengths=None, word_dropout=0, mask_matrix=None, inp_src=None,
+                region=None, vocab=None):
         """
 
         Args:
@@ -663,15 +706,21 @@ class AttSeqDecoder(nn.Module):
         state = init_hidden
         ho = None
         tick = None
+        ec = None
+        attn_covergae = None
+
         # length_control在配置文件中为true
         if self.length_control:
             countdown = length_countdown(desired_lengths).float() * self.W_tick
             ratio = desired_lengths.float() / enc_lengths.float()
 
+        if self.err_control:
+            idx = [[] for i in range(batch)]
+
         for i in range(max_length):
             # obtain the input word embedding，返回的词向量和对应词id（即经过softmax之后转化为one-hot的词）
             e_i, d_i = self.get_embedding(i, gold_tokens, logits,
-                                          sampling_prob, argmax, hard, tau)
+                                          sampling_prob, argmax, hard, tau, mask_matrix)
 
             if word_dropout > 0 and i > 0:
                 e_i, mask = drop_tokens(e_i, word_dropout)
@@ -680,11 +729,36 @@ class AttSeqDecoder(nn.Module):
             if self.length_control:
                 tick = torch.stack([countdown[:, i], ratio], -1).unsqueeze(1)
 
+            if self.err_control:
+                if d_i is not None:
+                    curP = d_i.max(-1)[-1]
+                    id = [(seq == p).nonzero().flatten().tolist() if p in seq and p != 0 else [-1] for p, seq in
+                          zip(curP, inp_src)]
+
+                    for x, ii in enumerate(id):
+                        idx[x].append(ii[0])
+
+                if i <= 2:
+                    ec = torch.ones([batch, 1, 1]).to(e_i)
+                else:
+                    err = getErr(region, vocab, inp_src, idx, i)
+                    ec = torch.tensor(err).to(e_i)
+                    ec = ec.view(batch, 1, 1)
+                    ec = ec * self.W_err
+
+            if self.coverage:
+                if len(attentions) == 0:
+                    attn_coverage = torch.zeros([enc_outputs.size(0), enc_outputs.size(1)]).to(e_i)
+                else:
+                    attn_coverage = torch.stack(attentions).sum(0)
+            if i == 2:
+                state = init_hidden
+
             # perform one decoding step
             # logits就是输出对应词表中的词，output就是当前输出的隐向量，state就是最后一个状态的隐向量。
             # 因为此处的rnn层数只有一层，所以output和state理论上来说应该是一样的。ho和att是和attention相关的一些参数，可暂时不考虑。
             _logits, outs, state, ho, att = self.step(e_i, enc_outputs, state,
-                                                      enc_lengths, ho, tick)
+                                                      enc_lengths, ho, tick, ec, attn_coverage)
 
             if self.learn_tau and self.training:
                 tau = 1 / (self.softplus(ho.squeeze()) + self.tau_0)

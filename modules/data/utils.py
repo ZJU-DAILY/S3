@@ -113,10 +113,14 @@ def read_corpus(file, tokenize):
     _vocab = Vocab()
 
     _data = []
-    for line in iterate_data(file):
-        tokens = tokenize(line)
-        _vocab.read_sequence(tokens)
-        _data.append(tokens)
+    if not isinstance(file, list):
+        file = [file]
+    for i, f in enumerate(file):
+        for line in iterate_data(f):
+            tokens = tokenize(line)
+            _vocab.read_sequence(tokens)
+            if i == 0:
+                _data.append(tokens)
 
     return _vocab, _data
 

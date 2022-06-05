@@ -31,15 +31,27 @@ def viz_sequence(words, scores=None, color="255, 0, 0"):
 
 def viz_summary(seqs):
     txt = ""
+    src_seq = []
+    hit = []
     for name, data, color in seqs:
         if isinstance(data, tuple):
             _text = viz_sequence(data[0], data[1], color=color)
             length = len(data[0])
+            non_length = len(set(data[0]))
+            if name == "SRC":
+                src_seq = data[0]
+            elif name == "HYP":
+                hit = data[1]
         else:
             _text = viz_sequence(data)
             length = len(data)
+            non_length = len(set(data))
+            if name == "SRC":
+                src_seq = data
+            elif name == "HYP":
+                hit = [1 if p in src_seq else 0 for p in data]
 
-        txt += f"<div class='sentence'>{name}({length}): {_text}</div>"
+        txt += f"<div class='sentence'>{name}({length}/{non_length}/{'' if name != 'HYP' else np.sum(hit)}): {_text}</div>"
 
     return f"<div class='sample'>{txt}</div>"
 

@@ -4,12 +4,12 @@ eval_interval: 500        # how often (batches) to evaluate the model on the dev
 log_interval: 50          # how often (batches) to log the training process to console
 batch_size: 20           # size of a batch-128
 #batch_size: 20
-epochs: 7                 # number of epochs.default-5
+epochs: 7                # number of epochs.default-5
 num_workers: 0
 
 plot_norms: True  # Plot the gradient norms of each loss wrt to the compressor
 
-lr: 0.0003        # Learning rate of the optimizer
+lr: 0.001        # Learning rate of the optimizer
 weight_decay: 0.  # Weight decay value of the optimizer
 
 # The checkpoint of the pretrained LM to be used as prior.
@@ -59,18 +59,25 @@ model:
   loss_weight_prior: 0.1          # weight of the prior loss - λ_P
 
   #------------------------------------
+  # Local Topic
+  #------------------------------------
+  local_topic_loss: False                # enable/disable the prior loss
+  loss_weight_local_topic: 3            # weight of the prior loss - λ_T
+  local_topic_distance: cosine          # distance metric for topic loss. Options: cosine, euclidean
+
+  #------------------------------------
   # Topic
   #------------------------------------
   topic_loss: True                # enable/disable the prior loss
-  loss_weight_topic: 1            # weight of the prior loss - λ_T
+  loss_weight_topic: 5            # weight of the prior loss - λ_T
   topic_idf: True                 # weight the input embeddings by their IDF
   topic_distance: cosine          # distance metric for topic loss. Options: cosine, euclidean
 
   #------------------------------------
   # Length
   #------------------------------------
-  length_loss: True               # enable/disable the length loss
-  loss_weight_length: 1        # weight of the prior loss - λ_L
+  length_loss: False               # enable/disable the length loss
+  loss_weight_length: 0.01        # weight of the prior loss - λ_L
 
 
   ################################################
@@ -126,5 +133,5 @@ model:
   hard: False        # Use Straight-Through, i.e., discretize the output distributions in the forwards pass
   gumbel: False      # Use Gumbel-Softmax instead of softmax in the latent sequence-true
   tau: 0.5          # Temperature of the distributions in the latent sequence
-  learn_tau: False  # Learn the value of the temperature, as function of the output of the decoder(s)
+  learn_tau: True  # Learn the value of the temperature, as function of the output of the decoder(s)
   tau_0: 0.5        # Hyper-parameter that controls the upper-bound of the temperature.

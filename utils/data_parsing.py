@@ -4,6 +4,8 @@ import os
 import random
 from collections import Counter, defaultdict
 from matplotlib import pyplot as plt
+from preprocess.SpatialRegionTools import cell2coord, coord2cell
+import numpy as np
 
 import numpy
 from glob2 import glob
@@ -112,3 +114,41 @@ def read_emoji(split=0.1, min_freq=100, max_ex=1000000, top_n=None):
     y_test = lb.transform(y_test)
 
     return X_train, y_train, X_test, y_test
+
+
+def getArea(region, vocab, src):
+    min_x = float("inf")
+    min_y = float("inf")
+    max_x = float("-inf")
+    max_y = float("-inf")
+
+    for p in src:
+        # if p == " " or vocab.id2tok[p] == '<pad>':
+        #     continue
+        try:
+            id = int(vocab.id2tok[p])
+        except Exception as e:
+            continue
+
+        cell_x, cell_y = cell2coord(region, id)
+
+        min_x = min(min_x, int(cell_x))
+        max_x = max(max_x, int(cell_x))
+        min_y = min(min_y, int(cell_y))
+        max_y = max(max_y, int(cell_y))
+    res = np.zeros([1, vocab.size], dtype='int64')
+    min_x = int(min_x)
+    min_y = int(min_y)
+    offset = 3
+    i = 0
+    st = set()
+    for y in range(min_y - offset * int(region.ystep), max_y + (offset + 1) * int(region.ystep), int(region.ystep)):
+        for x in range(min_x - offset * int(region.ystep), max_x + (offset + 1) * int(region.ystep), int(region.xstep)):
+            # 2就是eos的id
+            id = vocab.tok2id.get(str(coord2cell(region, x, y)), '2')
+            if id not in st:
+                res[0, i] = id
+                i += 1
+                st.add(id)
+
+    return res

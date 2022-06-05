@@ -1,8 +1,8 @@
 import torch
 from torch.nn import functional as F
-from SpatialRegionTools import cell2gps
-import math
-from modules.helpers import sequence_mask
+from modules.helpers import sequence_mask, getSED, adp, id2gps
+
+import numpy as np
 
 
 def _kl_div(inp_logits, trg_logits, lengths, tau=1):
@@ -80,8 +80,9 @@ def kl_length(logits, lengths, eos):
 
     _logits = logits.contiguous().view(-1, logits.size(-1))
     loss = F.cross_entropy(_logits, eos_labels, ignore_index=0)
+    anti_loss = F.cross_entropy(_logits, eos_labels, ignore_index=2)
 
-    return loss
+    return loss / (anti_loss + 1.0)
 
 
 def pairwise_loss(a, b, dist="cosine"):
@@ -96,25 +97,18 @@ def pairwise_loss(a, b, dist="cosine"):
     else:
         raise ValueError
 
-def getSED(region, p, start, end):
-    x, y = cell2gps(region, int(p))
-    st_x, st_y = cell2gps(region, start)
-    en_x, en_y = cell2gps(region, end)
-    #     Ax + By + C = 0
-    if en_x == st_x:
-        return abs(x - en_x)
-    A = (en_y - st_y) / (en_x - st_x)
-    B = -1
-    C = st_y - st_x * A
-    return abs(A * x + B * y + C) / math.sqrt(A * A + B * B)
-
 
 def sed_loss(region, src, trg):
+    if len(src) == len(trg):
+        print()
     # p为慢指针（指向trg），f为快指针（指向src）。src的长度应该大于等于trg
     p = 0
     f = 0
     maxSED = -1
     while p < len(trg) and f < len(src):
+        if src[f] == '' or src[f] == 'UNK':
+            f += 1
+            continue
         if trg[p] == src[f]:
             p += 1
             f += 1
@@ -122,8 +116,54 @@ def sed_loss(region, src, trg):
             st = trg[p - 1]
             en = trg[p]
             while trg[p] != src[f]:
+                if src[f] == '' or src[f] == 'UNK':
+                    f += 1
+                    continue
                 in_ = src[f]
                 dis = getSED(region, int(in_), int(st), int(en))
                 maxSED = max(maxSED, dis)
                 f += 1
+    if maxSED == -1:
+        print("errrr")
+        maxSED = 0
     return maxSED
+
+
+def energy_(region, inp, size_1):
+    enc1_energies = []
+    for trj in inp:
+        ener = [0] * size_1
+        for i in range(1, len(trj) - 1):
+            # window取到1
+            p = int(trj[i])
+            st = int(trj[i - 1])
+            if trj[i + 1] == '':
+                break
+            en = int(trj[i + 1])
+            pri = getSED(region, p, st, en)
+            # window取到2
+            st = int(trj[i - 2 if i - 2 > 0 else 0])
+            if trj[i + 1 if i + 1 < len(trj) - 1 else len(trj) - 1] == '':
+                break
+            en = int(trj[i + 1 if i + 1 < len(trj) - 1 else len(trj) - 1])
+            pri2 = getSED(region, p, st, en)
+
+            ener[i] = (pri + pri2) / 2
+        enc1_energies.append(ener)
+    return enc1_energies
+
+def energy_2(region, inp, size_1,src_lengths):
+    enc1_energies = []
+    for trj,_len in zip(inp, src_lengths):
+        ener = [0] * size_1
+        trj = trj[0:_len]
+        try:
+            _, idx, _ = adp(id2gps(region, trj), _len)
+        except Exception as e:
+            print(trj)
+            idx = []
+
+        for id in idx:
+            ener[id] = 1
+        enc1_energies.append(ener)
+    return enc1_energies

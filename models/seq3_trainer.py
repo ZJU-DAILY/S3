@@ -1,10 +1,15 @@
 import torch
 from torch.nn import functional as F
 
-from models.seq3_losses import _kl_div, kl_length, pairwise_loss,sed_loss
+from models.seq3_losses import _kl_div, kl_length, pairwise_loss, sed_loss, energy_, energy_2
 from models.seq3_utils import sample_lengths
 from modules.helpers import sequence_mask, avg_vectors, module_grad_wrt_loss
 from modules.training.trainer import Trainer
+from generate.utils import devectorize
+from numpy import mean
+from utils.data_parsing import getArea
+import numpy as np
+from generate.utils import getCompress
 
 
 class Seq3Trainer(Trainer):
@@ -22,12 +27,14 @@ class Seq3Trainer(Trainer):
         self.len_max_rt = self.anneal_init(self.config["model"]["max_ratio"])
         self.len_min = self.anneal_init(self.config["model"]["min_length"])
         self.len_max = self.anneal_init(self.config["model"]["max_length"])
+        self.mask = self.config["model"]["mask"]
+        self.mask_fn = self.config["model"]["mask_fn"]
 
     def _debug_grads(self):
         return list(sorted([(n, p.grad) for n, p in
                             self.model.named_parameters() if p.requires_grad]))
 
-    def _debug_grad_norms(self, reconstruct_loss, prior_loss, topic_loss):
+    def _debug_grad_norms(self, reconstruct_loss, local_topic_loss, topic_loss):
         c_grad_norm = []
         c_grad_norm.append(
             module_grad_wrt_loss(self.optimizers, self.model.compressor,
@@ -40,10 +47,10 @@ class Seq3Trainer(Trainer):
                                      topic_loss,
                                      "rnn"))
 
-        if self.config["model"]["prior_loss"] and self.oracle is not None:
+        if self.config["model"]["local_topic_loss"]:
             c_grad_norm.append(
                 module_grad_wrt_loss(self.optimizers, self.model.compressor,
-                                     prior_loss,
+                                     local_topic_loss,
                                      "rnn"))
         return c_grad_norm
 
@@ -83,6 +90,48 @@ class Seq3Trainer(Trainer):
 
         return loss, (att_x, att_y)
 
+    def _local_topic_loss(self, inp, dec1, src_lengths, trg_lengths):
+        """
+        Compute the pairwise distance of various outputs of the seq^3 architecture.
+        Args:
+            enc1: the outputs of the first encoder (input sequence)
+            dec1: the outputs of the first decoder (latent sequence)
+            src_lengths: the lengths of the input sequence
+            trg_lengths: the lengths of the targer sequence (summary)
+
+        """
+
+        enc_mask = sequence_mask(src_lengths).unsqueeze(-1).float()
+        dec_mask = sequence_mask(trg_lengths - 1).unsqueeze(-1).float()
+        # 头尾向量不参与计算
+        enc_mask[:, 0, :] = 0
+        enc_mask[:, -1, :] = 0
+        dec_mask[:, 0, :] = 0
+        dec_mask[:, -1, :] = 0
+
+        enc_embs = self.model.inp_encoder.embed(inp)
+        if dec1[3] is None:
+            print("dec1[3] is none")
+        dec_embs = self.model.compressor.embed.expectation(dec1[3])
+
+        vocab = self._get_vocab()
+        region = self._get_region()
+        # src = [[vocab.id2tok.get(p.item()) for p in seq] for seq in inp]
+        src = devectorize(inp.tolist(), vocab.id2tok, vocab.tok2id[vocab.EOS],
+                          strip_eos=None, oov_map=None, pp=True)
+        # energies = energy_2(region, src, enc_mask.size(1),src_lengths)
+        energies = energy_(region, src, enc_mask.size(1))
+        enc1_energies = torch.tensor(energies, dtype=float).view(enc_mask.size()).to(enc_mask.device)
+        enc1_energies += 0.1
+
+        x_emb, att_x = avg_vectors(enc_embs, enc_mask, enc1_energies)
+        y_emb, att_y = avg_vectors(dec_embs, dec_mask)
+
+        distance = self.config["model"]["local_topic_distance"]
+        loss = pairwise_loss(x_emb, y_emb, distance)
+
+        return loss, (att_x, att_y)
+
     def _prior_loss(self, outputs, latent_lengths):
         """
         Prior Loss
@@ -117,29 +166,19 @@ class Seq3Trainer(Trainer):
 
         return prior_loss, prior_loss_time, logits_oracle
 
-    def _sed_loss(self, inp, dec1, src_lengths, trg_lengths):
-        pass
-        # def devect(ids, oov, strip_eos, pp):
-        #     return devectorize(ids.tolist(), vocab.id2tok, vocab.tok2id[vocab.EOS],
-        #                        strip_eos=strip_eos, oov_map=oov, pp=pp)
-        #
-        # def id2txt(ids, oov=None, lengths=None, strip_eos=True):
-        #     if lengths:
-        #         return [" ".join(x[:l]) for l, x in
-        #                 zip(lengths, devect(ids, oov, strip_eos, pp=True))]
-        #     else:
-        #         return [" ".join(x) for x in devect(ids, oov, strip_eos, pp=True)]
-        #
-        # if dec1[3] is None:
-        #     print("dec1[3] is none")
-        # compress_trj = self.model.compressor.embed.expectation(dec1[3])
-        #
-        # src = id2txt(inp_src)
-        # latent = id2txt(dec1[3].max(-1)[1])
-        #
-        # loss = sed_loss(None, inp, compress_trj)
-        #
-        # return loss
+    def _sed_loss(self, inp, dec1):
+        vocab = self._get_vocab()
+        region = self._get_region()
+        src = devectorize(inp.tolist(), vocab.id2tok, vocab.tok2id[vocab.EOS],
+                          strip_eos=None, oov_map=None, pp=True)
+        trg = devectorize(dec1[3].max(-1)[1].tolist(), vocab.id2tok, vocab.tok2id[vocab.EOS],
+                          strip_eos=None, oov_map=None, pp=True)
+        comp_trj = [getCompress(region, src_, trg_)[0] for src_, trg_ in zip(src, trg)]
+        # print(comp_trj,src)
+        loss = [sed_loss(region, src_, trg_) for src_, trg_ in zip(src, comp_trj)]
+        # loss = sed_loss(region, src, comp_trj)
+
+        return mean(loss)
 
     def _process_batch(self, inp_x, out_x, inp_xhat, out_xhat,
                        x_lengths, xhat_lengths):
@@ -152,13 +191,35 @@ class Seq3Trainer(Trainer):
         len_max_rt = self.anneal_step(self.len_max_rt)
         len_min = self.anneal_step(self.len_min)
         len_max = self.anneal_step(self.len_max)
+        vocab = self._get_vocab()
+        region = self._get_region()
 
         latent_lengths = sample_lengths(x_lengths,
                                         len_min_rt, len_max_rt,
                                         len_min, len_max)
 
+        if self.mask:
+            if self.mask_fn == "area":
+                # Schema 1 for mask: A area
+                m_zeros = torch.zeros(inp_x.size(0), vocab.size).to(inp_x)
+                idxs = np.zeros([inp_x.size(0), vocab.size], dtype='int64')
+                i = 0
+                for seq in inp_x:
+                    idx = getArea(region, vocab, seq.tolist())
+                    idxs[i, :] = idx
+                    i += 1
+                mask = torch.tensor(idxs).to(inp_x)
+                mask_matrix = m_zeros.scatter(1, mask, 1)
+            elif self.mask_fn == "trj":
+                # Schema 2 for mask: A trj
+                m_zeros = torch.zeros(inp_x.size(0), vocab.size).to(inp_x)
+                mask_matrix = m_zeros.scatter(1, inp_x, 1)
+                mask_matrix[:, 0] = 0
+        else:
+            mask_matrix = None
+
         outputs = self.model(inp_x, inp_xhat,
-                             x_lengths, latent_lengths, sampling, tau)
+                             x_lengths, latent_lengths, sampling, tau, mask_matrix, region=region, vocab=vocab)
 
         enc1, dec1, enc2, dec2 = outputs
 
@@ -183,15 +244,16 @@ class Seq3Trainer(Trainer):
         losses = [mean_rec_loss]
 
         # --------------------------------------------------------------
-        # 2 - PRIOR
+        # 2 - LOCAL_TOPIC
         # --------------------------------------------------------------
-        if self.config["model"]["prior_loss"] and self.oracle is not None:
-            prior_loss, p_loss_i, p_logits = self._prior_loss(outputs,
-                                                              latent_lengths)
-            batch_outputs["prior"] = p_loss_i, p_logits
-            losses.append(prior_loss)
+        if self.config["model"]["local_topic_loss"]:
+            local_topic_loss, weight = self._local_topic_loss(inp_x, dec1,
+                                                                  x_lengths,
+                                                                  latent_lengths)
+            batch_outputs["local_weight"] = weight
+            losses.append(local_topic_loss)
         else:
-            prior_loss = None
+            local_topic_loss = None
 
         # --------------------------------------------------------------
         # 3 - TOPIC
@@ -221,7 +283,7 @@ class Seq3Trainer(Trainer):
             "log_interval"] == 0:
             batch_outputs["grad_norm"] = self._debug_grad_norms(
                 mean_rec_loss,
-                prior_loss,
+                local_topic_loss,
                 topic_loss)
 
         return losses, batch_outputs
@@ -248,6 +310,9 @@ class Seq3Trainer(Trainer):
             self.config["model"]["test_min_length"])
         self.len_max = self.anneal_init(
             self.config["model"]["test_max_length"])
+        vocab = self._get_vocab()
+        region = self._get_region()
+
 
         iterator = self.valid_loader
         with torch.no_grad():
@@ -263,28 +328,42 @@ class Seq3Trainer(Trainer):
                                                 self.len_min_rt,
                                                 self.len_max_rt, self.len_min,
                                                 self.len_max)
+                # if self.mask:
+                #     # Schema 2 for mask: A trj
+                #     m_zeros = torch.zeros(inp_src.size(0), vocab.size).to(inp_src)
+                #     mask_matrix = m_zeros.scatter(1, inp_src, 1)
+                # else:
+                #     mask_matrix = None
+
+                # 在推理的时候默认使用mask
+                m_zeros = torch.zeros(inp_src.size(0), vocab.size).to(inp_src)
+                mask_matrix = m_zeros.scatter(1, inp_src, 1)
+
                 # 模型推理
                 enc, dec = self.model.generate(inp_src, src_lengths,
-                                               latent_lengths)
+                                               latent_lengths,mask_matrix=mask_matrix,inp_src=inp_src,vocab=vocab,region=region)
                 losses = []
                 # --------------------------------------------------------------
-                # 1 - LENGTH Penalty
+                # 1 - SED loss
                 # --------------------------------------------------------------
-                if self.config["model"]["length_loss"]:
-                    _vocab = self._get_vocab()
-                    eos_id = _vocab.tok2id[_vocab.EOS]
-                    length_loss = kl_length(dec[0], latent_lengths, eos_id)
-                    losses.append(length_loss)
+                loss_sed = self._sed_loss(inp_src, dec)
                 # --------------------------------------------------------------
-                # 2 - TOPIC
+                # 2 - LENGTH Penalty
                 # --------------------------------------------------------------
-                if self.config["model"]["topic_loss"]:
-                    topic_loss, _ = self._topic_loss(inp_src, dec,
-                                                     src_lengths,
-                                                     latent_lengths)
-                    losses.append(topic_loss)
-                loss_sum = loss_sum + sum(losses).item()
-
+                # if self.config["model"]["length_loss"]:
+                #     _vocab = self._get_vocab()
+                #     eos_id = _vocab.tok2id[_vocab.EOS]
+                #     length_loss = kl_length(dec[0], latent_lengths, eos_id)
+                #     losses.append(length_loss)
+                # --------------------------------------------------------------
+                # 3 - TOPIC
+                # --------------------------------------------------------------
+                # if self.config["model"]["topic_loss"]:
+                #     topic_loss, _ = self._topic_loss(inp_src, dec,
+                #                                      src_lengths,
+                #                                      latent_lengths)
+                #     losses.append(topic_loss)
+                loss_sum = loss_sed  # + loss_sum + sum(losses).item()
         return loss_sum
 
     def _get_vocab(self):
@@ -299,6 +378,16 @@ class Seq3Trainer(Trainer):
             _vocab = dataset.vocab
 
         return _vocab
+
+    def _get_region(self):
+        if isinstance(self.train_loader, (list, tuple)):
+            dataset = self.train_loader[0].dataset
+        else:
+            dataset = self.train_loader.dataset
+
+        _region = dataset.region
+
+        return _region
 
     def get_state(self):
 

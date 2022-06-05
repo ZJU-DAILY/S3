@@ -12,7 +12,7 @@ from modules.data.utils import vectorize, read_corpus, read_corpus_subw, \
 class BaseLMDataset(Dataset, ABC):
     def __init__(self, input, preprocess=None,
                  vocab=None, vocab_size=None,
-                 subword=False, subword_path=None, verbose=True, **kwargs):
+                 subword=False, subword_path=None, verbose=True, region=None, **kwargs):
         """
         Base Dataset for Language Modeling.
 
@@ -31,6 +31,7 @@ class BaseLMDataset(Dataset, ABC):
         self.input = input
         self.subword = subword
         self.subword_path = subword_path
+        self.region = region
 
         if preprocess is not None:
             self.preprocess = preprocess

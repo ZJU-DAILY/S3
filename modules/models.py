@@ -20,6 +20,7 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
         self.detach_hidden = kwargs.get("detach_hidden", False)
         self.input_feeding = kwargs.get("input_feeding", False)
         self.length_control = kwargs.get("length_control", False)
+        self.err_control = kwargs.get("err_control", False)
         self.bi_encoder = kwargs.get("rnn_bidirectional", False)
         self.bi_encoder = kwargs.get("rnn_bidirectional", False)
         self.rnn_type = kwargs.get("rnn_type", "LSTM")
@@ -33,7 +34,7 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
 
         # tie embedding layers to output layers (vocabulary projections)
         kwargs["tie_weights"] = kwargs.get("tie_embedding_outputs", False)
-
+        err_control = kwargs.get("err_control", False)
         ############################################
         # Layers
         ############################################
@@ -49,8 +50,9 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
         kwargs["rnn_size"] = kwargs.get("dec_rnn_size", kwargs.get("rnn_size"))
         enc_size = self.inp_encoder.rnn_size
         # self.n_tokens实际上存的是词向量，用于初始化嵌入层
-        self.compressor = AttSeqDecoder(self.n_tokens, enc_size, **kwargs)
-        self.decompressor = AttSeqDecoder(self.n_tokens, enc_size, **kwargs)
+        self.compressor = AttSeqDecoder(self.n_tokens, enc_size, err_control, **kwargs)
+        # 默认不进行err control
+        self.decompressor = AttSeqDecoder(self.n_tokens, enc_size, False, **kwargs)
 
         # create a dummy embedding layer, which will retrieve the idf values
         # of each word, given the word ids
@@ -80,6 +82,8 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
             # - the target length
             # - the expansion / compression ratio given the source length
             enc_hidden_size += 2
+        if self.err_control:
+            enc_hidden_size += 1
 
         # Build a linear layer for each
         self.src_bridge = nn.ModuleList([nn.Linear(enc_hidden_size,
@@ -88,6 +92,7 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
         self.trg_bridge = nn.ModuleList([nn.Linear(enc_hidden_size,
                                                    dec_hidden_size)
                                          for _ in range(number_of_states)])
+
     # decoder的初始输入
     def _bridge(self, bridge, hidden, src_lengths=None, trg_lengths=None):
         """Forward hidden state through bridge."""
@@ -128,7 +133,7 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
             outs = tuple([bottle_hidden(state, hidden[ix], L)
                           for ix, state in enumerate(bridge)])
         else:
-            outs = bottle_hidden(bridge[0], hidden)
+            outs = bottle_hidden(bridge[0], _fix_hidden(hidden), L)
 
         return outs
 
@@ -145,7 +150,7 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
         self.compressor.embed.set_grad_mask(mask)
         self.decompressor.embed.set_grad_mask(mask)
 
-    def _fake_inputs(self, inputs, latent_lengths, pad=1):
+    def _fake_inputs(self, inputs, latent_lengths, src_lengths, pad=1):
         batch_size, seq_len = inputs.size()
 
         if latent_lengths is not None:
@@ -157,9 +162,12 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
         # 将fake的数据类型转化成和inputs一样的
         fakes = fakes.type_as(inputs)
         fakes[:, 0] = self.sos
+        fakes[:, 1] = inputs[:, 0]
+        for i, len_ in enumerate(src_lengths):
+            fakes[i, 2] = inputs[i, len_.item()-1]
         return fakes
 
-    def generate(self, inputs, src_lengths, trg_seq_len):
+    def generate(self, inputs, src_lengths, trg_seq_len, mask_matrix=None,inp_src=None, vocab=None, region=None):
         # ENCODER
         enc1_results = self.inp_encoder(inputs, None, src_lengths)
         outs_enc1, hn_enc1 = enc1_results[-2:]
@@ -167,7 +175,7 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
         # DECODER
         dec_init = self._bridge(self.src_bridge, hn_enc1, src_lengths,
                                 trg_seq_len)
-        inp_fake = self._fake_inputs(inputs, trg_seq_len)
+        inp_fake = self._fake_inputs(inputs, trg_seq_len, src_lengths)
         # dec1_results = self.compressor(inp_fake, outs_enc1, dec_init,
         #                                argmax=True,
         #                                enc_lengths=src_lengths,
@@ -176,12 +184,14 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
         dec1_results = self.compressor(inp_fake, outs_enc1, dec_init,
                                        enc_lengths=src_lengths,
                                        sampling_prob=1.,
-                                       desired_lengths=trg_seq_len)
+                                       desired_lengths=trg_seq_len, mask_matrix=mask_matrix,inp_src=inp_src,
+                                       vocab=vocab, region=region)
         return enc1_results, dec1_results
+
     # latent_length就是论文中的M
     def forward(self, inp_src, inp_trg,
                 src_lengths, latent_lengths,
-                sampling, tau=1, hard=True):
+                sampling, tau=1, mask_matrix=None, hard=True, region=None, vocab=None):
 
         """
         This approach utilizes 4 RNNs. The latent representation is obtained
@@ -216,19 +226,22 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
         _dec1_init = self._bridge(self.src_bridge, hn_enc1, src_lengths,
                                   latent_lengths)
         # inp_fake (batch,seq_len + 1),因为在decoder中，输入是未知的，即需要上一个时刻的输出来作为下一时刻的输入，所以此处相当于先声明一个向量，先给他先送进去。
-        inp_fake = self._fake_inputs(inp_src, latent_lengths)
+        inp_fake = self._fake_inputs(inp_src, latent_lengths,src_lengths)
+
         dec1_results = self.compressor(inp_fake, outs_enc1, _dec1_init,
                                        enc_lengths=src_lengths,
                                        sampling_prob=1., hard=hard, tau=tau,
-                                       desired_lengths=latent_lengths)
+                                       desired_lengths=latent_lengths, mask_matrix=mask_matrix, inp_src=inp_src,
+                                       region=region, vocab=vocab)
         # logits_dec1(batch,latent_size,vocab_size -> 此处还未映射) outs_dec1 (batch,seq_len+1,hid_size), dists_dec1 (batch,seq_len,vocab_size):已经one-hot的结果
         logits_dec1, outs_dec1, _, dists_dec1, _, _ = dec1_results
+        # print(self.compressor.Wc.weight)
         # --------------------------------------------
         # ENCODER-2 (Reconstruction)
         # --------------------------------------------
         # cmp_embeddings (batch,seq_len,emb_size)
         cmp_embeddings = self.compressor.embed.expectation(dists_dec1)
-        cmp_lengths = latent_lengths - 1 # 删除之前的<sos>起始符，因为作为下一个encoder的输入是不需要起始符的
+        cmp_lengths = latent_lengths - 1  # 删除之前的<sos>起始符，因为作为下一个encoder的输入是不需要起始符的
 
         # !!! Limit the communication only through the embs
         # The compression encoder reads only the sampled embeddings

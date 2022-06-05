@@ -4,7 +4,7 @@ eval_interval: 500        # how often (batches) to evaluate the model on the dev
 log_interval: 50          # how often (batches) to log the training process to console
 batch_size: 20           # size of a batch-128
 #batch_size: 20
-epochs: 5                # number of epochs.default-5
+epochs: 7                # number of epochs.default-5
 num_workers: 0
 
 plot_norms: True  # Plot the gradient norms of each loss wrt to the compressor
@@ -62,17 +62,16 @@ model:
   # Local Topic
   #------------------------------------
   local_topic_loss: False                # enable/disable the prior loss
-  loss_weight_local_topic: 2            # weight of the prior loss - λ_T
-  # 度量两个向量的距离：1.余弦相似度（计算夹角） 2.欧氏距离（计算点的距离）那么欧式距离小 -> 夹角小，但是夹角小不一定能保证欧氏距离小。我们这里需要更苛刻的条件。
-  local_topic_distance: euclidean          # distance metric for topic loss. Options: cosine, euclidean
+  loss_weight_local_topic: 3            # weight of the prior loss - λ_T
+  local_topic_distance: cosine          # distance metric for topic loss. Options: cosine, euclidean
 
   #------------------------------------
   # Topic
   #------------------------------------
   topic_loss: True                # enable/disable the prior loss
-  loss_weight_topic: 1            # weight of the prior loss - λ_T
+  loss_weight_topic: 5            # weight of the prior loss - λ_T
   topic_idf: True                 # weight the input embeddings by their IDF
-  topic_distance: euclidean          # distance metric for topic loss. Options: cosine, euclidean
+  topic_distance: cosine          # distance metric for topic loss. Options: cosine, euclidean
 
   #------------------------------------
   # Length
@@ -84,14 +83,14 @@ model:
   ################################################
   # SUMMARY LENGTHS
   ################################################
-  min_ratio: 0.2          # min % of the sampled summary lengths
+  min_ratio: 0.4          # min % of the sampled summary lengths
   max_ratio: 0.6          # max % of the sampled summary lengths
-  min_length: 6           # absolute min length (words) of the sampled summary length
+  min_length: 15           # absolute min length (words) of the sampled summary length
   max_length: 30          # absolute max length (words) of the sampled summary length
-  test_min_ratio: 0.3     # same as above but for inference
-  test_max_ratio: 0.31    # same as above but for inference
-  test_min_length: 4      # same as above but for inference
-  test_max_length: 16     # same as above but for inference
+  test_min_ratio: 0.5     # same as above but for inference
+  test_max_ratio: 0.51    # same as above but for inference
+  test_min_length: 15      # same as above but for inference
+  test_max_length: 30     # same as above but for inference
 
   ################################################
   # PARAMETER SHARING
@@ -107,7 +106,6 @@ model:
   ################################################
   length_control: True          # If true, use the countdown parameter for the decoders,
                                 # as well as the target length-aware initialization for each decoder
-  err_control: False
   bridge_hidden: True           # use a bridge layer (hidden) between the last layer of the encoder and the initial state of the decoder
   bridge_non_linearity: tanh    # apply a non-linearity to the bridge layer. Options: tanh, relu
 
@@ -122,11 +120,10 @@ model:
   dec_rnn_size: 300           # the size of the decoder(s)
   rnn_layers: 2               # number of layers for encoders and decoders
   rnn_dropout: 0.0            # dropout probability for the outputs of each RNN
-  rnn_type: GRU
   rnn_bidirectional: True     # Use bidirectional encoder(s)
-  attention: True             # Use attentional seq2seq. False not implemented!
+  attention: False             # Use attentional seq2seq. False not implemented!
   attention_fn: general       # The attention function. Options: general, additive, concat
-  attention_coverage: True   # Include a coverage vector to the attention mechanism
+  attention_coverage: False   # Include a coverage vector to the attention mechanism
   input_feeding: True         # Use input feeding (Luong et. al. 2015)
   input_feeding_learnt: True  # Learn the first value of the input feed
   out_non_linearity: tanh     # Apply a non-linearity to the output vector (before projection to vocab)
@@ -134,9 +131,8 @@ model:
   sampling: 0.0     # Probability of schedule-sampling to the reconstructor
   top: False        # Use argmax for sampling in the latent sequence. True not implemented!
   hard: False        # Use Straight-Through, i.e., discretize the output distributions in the forwards pass
-  gumbel: True      # Use Gumbel-Softmax instead of softmax in the latent sequence-true
+  gumbel: False      # Use Gumbel-Softmax instead of softmax in the latent sequence-true
   tau: 0.5          # Temperature of the distributions in the latent sequence
-  learn_tau: True  # 为消除重复token做出了主要贡献。Learn the value of the temperature, as function of the output of the decoder(s)
+  learn_tau: True  # Learn the value of the temperature, as function of the output of the decoder(s)
   tau_0: 0.5        # Hyper-parameter that controls the upper-bound of the temperature.
   mask: True
-  mask_fn: trj      #option: area or trj.
