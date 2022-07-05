@@ -44,7 +44,7 @@ def createTrainVal(region, trjfile,
                 print("Scaned ",i," trips...")
         trainsrc.close(), validsrc.close(), evalsrc.close()
     print(sum_)
-# createVocab_save()
+createVocab_save()
 with open('pickle.txt', 'rb') as f:
     var_a = pickle.load(f)
 region = pickle.loads(var_a)
