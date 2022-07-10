@@ -1,3 +1,5 @@
+import pickle
+
 import torch
 from torch import nn
 from torch.autograd import Variable
@@ -31,10 +33,13 @@ class GaussianNoise(nn.Module):
                                                 str(self.stddev))
 
 
+# 此处实现普通的点嵌入，以及poi点嵌入
 class Embed(nn.Module):
     def __init__(self,
                  num_embeddings,
                  embedding_dim,
+                 gnn_emb_weights,
+                 gnn_latent_dim,
                  embeddings=None,
                  noise=.0,
                  dropout=.0,
@@ -56,6 +61,9 @@ class Embed(nn.Module):
         self.embedding = nn.Embedding(num_embeddings=num_embeddings,
                                       embedding_dim=embedding_dim)
 
+        self.node2vec = nn.Embedding.from_pretrained(torch.FloatTensor(gnn_emb_weights))
+
+        self.GCN = nn.Linear(gnn_emb_weights.shape[1], gnn_latent_dim)
         # initialize the weights of the Embedding layer,
         # with the given pre-trained word vectors
         if embeddings is not None:
@@ -116,7 +124,7 @@ class Embed(nn.Module):
 
         return embs
 
-    def forward(self, x):
+    def forward(self, x, poi_x):
         """
         This is the heart of the model. This function, defines how the data
         passes through the network.
@@ -127,7 +135,18 @@ class Embed(nn.Module):
 
         """
         embeddings = self.embedding(x)
+        # todo 此处添加图表征向量，然后拼接
+        with open('../datasets/gid2poi.txt', 'rb') as f:
+            var_a = pickle.load(f)
+        gid2poi = pickle.loads(var_a)
 
+        # 1.x(batch * max_len) 需要找到trj中每一个点p最近的poi点P，这一步可以放到初始化上操作
+        print()
+        # 2.batch_emb = self.embedding(x)，表示node2vec
+        gnn_emb = self.node2vec(poi_x)
+        # 3.batch_emb = self.GCN(batch_emb)，经过一个全连接层得到最后的表征向量
+        poi_emb = self.GCN(gnn_emb)
+        embeddings = torch.cat([embeddings, poi_emb], -1)
         if self.norm:
             embeddings = self.layer_norm(embeddings)
 

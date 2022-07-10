@@ -362,8 +362,8 @@ class SeqReader(nn.Module, RecurrentHelper):
         else:
             return outputs, hidden
 
-    def forward(self, src, hidden=None, lengths=None, word_dropout=0.0):
-        embeds = self.embed(src)
+    def forward(self, src, poi_src, hidden=None, lengths=None, word_dropout=0.0):
+        embeds = self.embed(src,poi_src)
 
         if word_dropout > 0:
             embeds, mask = drop_tokens(embeds, word_dropout)

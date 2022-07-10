@@ -7,7 +7,6 @@ sys.path.append(root_path)
 import itertools
 import math
 import warnings
-
 import numpy
 import torch
 from tabulate import tabulate
@@ -74,6 +73,11 @@ print("Building training dataset...")
 with open('../preprocess/pickle.txt', 'rb') as f:
     var_a = pickle.load(f)
 region = pickle.loads(var_a)
+
+with open('../datasets/gid2poi.txt', 'rb') as f:
+    var_a = pickle.load(f)
+gid2poi = pickle.loads(var_a)
+
 # 需要保证第一个是训练集的路径，之后的顺序无所谓
 train_data = AEDataset([config["data"]["train_path"],config["data"]["val_path"]],
                        preprocess=giga_tokenizer,
@@ -82,7 +86,8 @@ train_data = AEDataset([config["data"]["train_path"],config["data"]["val_path"]]
                        seq_len=config["data"]["seq_len"],
                        oovs=config["data"]["oovs"],
                        swaps=config["data"]["swaps"],
-                       region=region)
+                       region=region,
+                       gid2poi=gid2poi)
 
 print("Building validation dataset...")
 val_data = AEDataset(config["data"]["val_path"],
@@ -92,7 +97,8 @@ val_data = AEDataset(config["data"]["val_path"],
                      seq_len=config["data"]["seq_len"],
                      return_oov=True,
                      oovs=config["data"]["oovs"],
-                     region=region)
+                     region=region,
+                     gid2poi=gid2poi)
 
 val_data.vocab = train_data.vocab
 vocab = train_data.vocab

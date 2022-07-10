@@ -18,8 +18,9 @@ class Visualizer:
                            port=port,
                            http_proxy_host=http_proxy_host,
                            http_proxy_port=http_proxy_port,
-                           log_to_filename=log_to_filename,
-                           use_incoming_socket=False)
+                           # log_to_filename=log_to_filename,
+                           # use_incoming_socket=False
+                           )
         self._viz.close(env=env)
 
     def plot_line(self, values, steps, name, legend=None):
