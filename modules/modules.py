@@ -5,6 +5,7 @@ from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
 
 from modules.helpers import straight_softmax, gumbel_softmax, getErr, getSED
 from modules.layers import Embed, Attention
+from utils.gcn_emb import gcn_emb
 
 
 class RecurrentHelper:
@@ -276,7 +277,7 @@ class RNNModule(nn.Module, RecurrentHelper):
 
 # 模型1/2，即模型的encoder部分
 class SeqReader(nn.Module, RecurrentHelper):
-    def __init__(self, ntokens, **kwargs):
+    def __init__(self, ntokens,_gcn_emb_weights, **kwargs):
         super(SeqReader, self).__init__()
 
         ############################################
@@ -296,14 +297,19 @@ class SeqReader(nn.Module, RecurrentHelper):
         self.tie_weights = kwargs.get("tie_weights", False)
         self.pack = kwargs.get("pack", True)
         self.countdown = kwargs.get("countdown", False)
+        self.gnn_latent_dim = kwargs.get("gnn_latent_dim",128)
+        self.gnn_used = kwargs.get("gnn_used",True)
 
         ############################################
         # Layers
         ############################################
-        # 此处自己设计的词嵌入
-        self.embed = Embed(ntokens, self.emb_size,
-                           noise=self.embed_noise, dropout=self.embed_dropout)
 
+
+        # 此处自己设计的词嵌入
+        self.embed = Embed(ntokens, self.emb_size, _gcn_emb_weights, self.gnn_latent_dim,
+                           noise=self.embed_noise, dropout=self.embed_dropout)
+        if self.gnn_used:
+            self.emb_size += self.gnn_latent_dim
         self.encoder = RNNModule(input_size=self.emb_size,
                                  rnn_size=self.rnn_size,
                                  rnn_type=self.rnn_type,
@@ -383,7 +389,7 @@ class SeqReader(nn.Module, RecurrentHelper):
 
 # 模型2/2，即模型的decoder部分
 class AttSeqDecoder(nn.Module):
-    def __init__(self, trg_ntokens, enc_size, err_control_, **kwargs):
+    def __init__(self, trg_ntokens, enc_size, err_control_,_gcn_emb_weights, **kwargs):
         super(AttSeqDecoder, self).__init__()
 
         ############################################
@@ -411,15 +417,19 @@ class AttSeqDecoder(nn.Module):
         self.input_feeding_learnt = kwargs.get("input_feeding_learnt", False)
         self.coverage = kwargs.get("attention_coverage", False)
         self.rnn_type = kwargs.get("rnn_type", "LSTM")
+        self.gnn_latent_dim = kwargs.get("gnn_latent_dim",128)
+        self.gnn_used = kwargs.get("gnn_used",True)
 
         ############################################
         # Layers
         ############################################
+        # _gcn_emb_weights = gcn_emb()
         # 轨迹点嵌入
-        self.embed = Embed(trg_ntokens, emb_size,
+        self.embed = Embed(trg_ntokens, emb_size,_gcn_emb_weights,self.gnn_latent_dim,
                            noise=embed_noise,
                            dropout=embed_dropout)
-
+        if self.gnn_used:
+            emb_size += self.gnn_latent_dim
         # the output size of the ho token: ho = [ h || c]
         if tie_weights:
             self.ho_size = emb_size

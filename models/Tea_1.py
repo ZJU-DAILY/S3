@@ -35,7 +35,10 @@ from preprocess.SpatialRegionTools import SpacialRegion
 from sklearn.neighbors import KDTree
 
 # torch.backends.cudnn.enabled = False
-
+####################################################################
+# Global variable
+####################################################################
+global gl_gid2poi
 ####################################################################
 # Settings
 ####################################################################
@@ -76,7 +79,7 @@ region = pickle.loads(var_a)
 
 with open('../datasets/gid2poi.txt', 'rb') as f:
     var_a = pickle.load(f)
-gid2poi = pickle.loads(var_a)
+gl_gid2poi = pickle.loads(var_a)
 
 # 需要保证第一个是训练集的路径，之后的顺序无所谓
 train_data = AEDataset([config["data"]["train_path"],config["data"]["val_path"]],
@@ -87,7 +90,7 @@ train_data = AEDataset([config["data"]["train_path"],config["data"]["val_path"]]
                        oovs=config["data"]["oovs"],
                        swaps=config["data"]["swaps"],
                        region=region,
-                       gid2poi=gid2poi)
+                       gid2poi=gl_gid2poi)
 
 print("Building validation dataset...")
 val_data = AEDataset(config["data"]["val_path"],
@@ -98,7 +101,7 @@ val_data = AEDataset(config["data"]["val_path"],
                      return_oov=True,
                      oovs=config["data"]["oovs"],
                      region=region,
-                     gid2poi=gid2poi)
+                     gid2poi=gl_gid2poi)
 
 val_data.vocab = train_data.vocab
 vocab = train_data.vocab

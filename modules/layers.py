@@ -43,7 +43,7 @@ class Embed(nn.Module):
                  embeddings=None,
                  noise=.0,
                  dropout=.0,
-                 trainable=True, grad_mask=None, norm=False):
+                 trainable=True, grad_mask=None, norm=False,gnn_used=True):
         """
         Define the layer of the model and perform the initializations
         of the layers (wherever it is necessary)
@@ -56,14 +56,16 @@ class Embed(nn.Module):
         super(Embed, self).__init__()
 
         self.norm = norm
+        self.gnn_used = gnn_used
 
         # define the embedding layer, with the corresponding dimensions
         self.embedding = nn.Embedding(num_embeddings=num_embeddings,
                                       embedding_dim=embedding_dim)
 
-        self.node2vec = nn.Embedding.from_pretrained(torch.FloatTensor(gnn_emb_weights))
+        if gnn_used:
+            self.node2vec = nn.Embedding.from_pretrained(torch.FloatTensor(gnn_emb_weights))
 
-        self.GCN = nn.Linear(gnn_emb_weights.shape[1], gnn_latent_dim)
+            self.GCN = nn.Linear(gnn_emb_weights.shape[1], gnn_latent_dim)
         # initialize the weights of the Embedding layer,
         # with the given pre-trained word vectors
         if embeddings is not None:
@@ -135,18 +137,20 @@ class Embed(nn.Module):
 
         """
         embeddings = self.embedding(x)
-        # todo 此处添加图表征向量，然后拼接
-        with open('../datasets/gid2poi.txt', 'rb') as f:
-            var_a = pickle.load(f)
-        gid2poi = pickle.loads(var_a)
-
-        # 1.x(batch * max_len) 需要找到trj中每一个点p最近的poi点P，这一步可以放到初始化上操作
-        print()
-        # 2.batch_emb = self.embedding(x)，表示node2vec
-        gnn_emb = self.node2vec(poi_x)
-        # 3.batch_emb = self.GCN(batch_emb)，经过一个全连接层得到最后的表征向量
-        poi_emb = self.GCN(gnn_emb)
-        embeddings = torch.cat([embeddings, poi_emb], -1)
+        if self.gnn_used:
+            # todo 此处添加图表征向量，然后拼接
+            # with open('../datasets/gid2poi.txt', 'rb') as f:
+            #     var_a = pickle.load(f)
+            # gid2poi = pickle.loads(var_a)
+            global gl_gid2poi
+            # 1.x(batch * max_len) 需要找到trj中每一个点p最近的poi点P，这一步可以放到初始化上操作
+            # 2.batch_emb = self.embedding(x)，表示node2vec
+            poi_id_ = [ [gl_gid2poi.get(p,0) for p in seq] for seq in poi_x]
+            poi_id = torch.tensor(poi_id_).to(x)
+            gnn_embeddings = self.node2vec(poi_id)
+            # 3.batch_emb = self.GCN(batch_emb)，经过一个全连接层得到最后的表征向量
+            poi_embeddings = self.GCN(gnn_embeddings)
+            embeddings = torch.cat([embeddings, poi_embeddings], -1)
         if self.norm:
             embeddings = self.layer_norm(embeddings)
 

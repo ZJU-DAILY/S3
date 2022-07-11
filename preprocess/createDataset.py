@@ -2,7 +2,7 @@ import pickle
 
 from preprocess.SpatialRegionTools import trip2seq, str2trip, seq2str, createVocab_save
 
-
+# todo 完成数据集的重新生成
 def createTrainVal(region, trjfile,
                    ntrain=36000, nval=12000, neval=12000,
                    min_length=15, max_length=50):

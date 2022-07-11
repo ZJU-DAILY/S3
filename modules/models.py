@@ -3,6 +3,8 @@ from torch import nn
 from torch.nn import functional as F
 
 from modules.modules import RecurrentHelper, AttSeqDecoder, SeqReader
+from utils.gcn_emb import gcn_emb
+from utils.data_parsing import devect
 
 
 class Seq2Seq2Seq(nn.Module, RecurrentHelper):
@@ -35,24 +37,25 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
         # tie embedding layers to output layers (vocabulary projections)
         kwargs["tie_weights"] = kwargs.get("tie_embedding_outputs", False)
         err_control = kwargs.get("err_control", False)
+        _gcn_emb_weights = gcn_emb()
         ############################################
         # Layers
         ############################################
-        self.embedding = nn.Embedding(self.n_tokens, self.embedding_size,
-                                      padding_idx=0)
+        # self.embedding = nn.Embedding(self.n_tokens, self.embedding_size,
+        #                               padding_idx=0)
 
         # backward-compatibility for older version of the project
         kwargs["rnn_size"] = kwargs.get("enc_rnn_size", kwargs.get("rnn_size"))
-        self.inp_encoder = SeqReader(self.n_tokens, **kwargs)
-        self.cmp_encoder = SeqReader(self.n_tokens, **kwargs)
+        self.inp_encoder = SeqReader(self.n_tokens, _gcn_emb_weights,**kwargs)
+        self.cmp_encoder = SeqReader(self.n_tokens, _gcn_emb_weights, **kwargs)
 
         # backward-compatibility for older version of the project
         kwargs["rnn_size"] = kwargs.get("dec_rnn_size", kwargs.get("rnn_size"))
         enc_size = self.inp_encoder.rnn_size
         # self.n_tokens实际上存的是词向量，用于初始化嵌入层
-        self.compressor = AttSeqDecoder(self.n_tokens, enc_size, err_control, **kwargs)
+        self.compressor = AttSeqDecoder(self.n_tokens, enc_size, err_control, _gcn_emb_weights,**kwargs)
         # 默认不进行err control
-        self.decompressor = AttSeqDecoder(self.n_tokens, enc_size, False, **kwargs)
+        self.decompressor = AttSeqDecoder(self.n_tokens, enc_size, False, _gcn_emb_weights, **kwargs)
 
         # create a dummy embedding layer, which will retrieve the idf values
         # of each word, given the word ids
@@ -213,7 +216,8 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
         # --------------------------------------------
         # ENCODER-1 (Compression)
         # --------------------------------------------
-        enc1_results = self.inp_encoder(inp_src, None, src_lengths,
+        poi_src = devect(inp_src,vocab,pp=True)
+        enc1_results = self.inp_encoder(inp_src, poi_src, None, src_lengths,
                                         word_dropout=self.enc_token_dropout)
         # encoder的输出以及最后一个的隐向量.注意此处是双向的lstm。num_layer = 2
         # outs_enc1(batch,seq_len,hid_size * bidirection), hn_enc1 (num_layer,batch,hid_size) * bidirection

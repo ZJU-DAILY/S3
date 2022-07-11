@@ -116,6 +116,8 @@ model:
   embed_trainable: True       # Finetune the embeddings
   embed_masked: False         # Finetune the only the words not included in the pretrained embeddings.
   layer_norm: True            # Apply layer normalization to the outputs of the decoders
+  gnn_used: True
+  gnn_latent_dim: 128
   enc_token_dropout: 0.0      # % of words to drop from the input
   dec_token_dropout: 0.5      # % of words to drop from the reconstruction
   enc_rnn_size: 300           # the size of the encoder(s)

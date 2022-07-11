@@ -11,7 +11,7 @@ import numpy
 from glob2 import glob
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelBinarizer
-
+from itertools import groupby
 from sys_config import DATA_DIR
 
 
@@ -152,3 +152,27 @@ def getArea(region, vocab, src):
                 st.add(id)
 
     return res
+
+
+def devect(ids,vocab, pp):
+    return devectorize(ids.tolist(), vocab.id2tok,pp=pp)
+
+def devectorize(data, id2tok, pp=True):
+
+
+    data = [[id2tok.get(x) for x in seq] for seq in data]
+
+    if pp:
+        rules = {f"<oov-{i}>": "UNK" for i in range(10)}
+        rules["unk"] = ""
+        rules["<unk>"] = ""
+        rules["<sos>"] = ""
+        rules["<eos>"] = ""
+        rules["<pad>"] = ""
+
+        data = [[rules.get(x, x) for x in seq] for seq in data]
+
+        # remove repetitions
+        data = [[x[0] for x in groupby(seq)] for seq in data]
+    data = [[x if x != 'UNK' else '' for x in seq] for seq in data]
+    return data
