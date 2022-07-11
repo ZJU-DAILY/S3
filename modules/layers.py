@@ -5,7 +5,7 @@ from torch import nn
 from torch.autograd import Variable
 
 from modules.helpers import sequence_mask, masked_normalization_inf
-
+from models.GL_home import get_gid2poi
 
 class GaussianNoise(nn.Module):
     def __init__(self, stddev, mean=.0):
@@ -142,7 +142,7 @@ class Embed(nn.Module):
             # with open('../datasets/gid2poi.txt', 'rb') as f:
             #     var_a = pickle.load(f)
             # gid2poi = pickle.loads(var_a)
-            global gl_gid2poi
+            gl_gid2poi = get_gid2poi()
             # 1.x(batch * max_len) 需要找到trj中每一个点p最近的poi点P，这一步可以放到初始化上操作
             # 2.batch_emb = self.embedding(x)，表示node2vec
             poi_id_ = [ [gl_gid2poi.get(p,0) for p in seq] for seq in poi_x]
