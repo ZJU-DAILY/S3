@@ -4,12 +4,11 @@ from torch.nn import functional as F
 
 from modules.modules import RecurrentHelper, AttSeqDecoder, SeqReader
 from utils.gcn_emb import gcn_emb
-from utils.data_parsing import devect
 
 
 class Seq2Seq2Seq(nn.Module, RecurrentHelper):
 
-    def __init__(self, n_tokens, **kwargs):
+    def __init__(self, n_tokens, vocab, **kwargs):
         super(Seq2Seq2Seq, self).__init__()
 
         ############################################
@@ -46,14 +45,14 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
 
         # backward-compatibility for older version of the project
         kwargs["rnn_size"] = kwargs.get("enc_rnn_size", kwargs.get("rnn_size"))
-        self.inp_encoder = SeqReader(self.n_tokens, _gcn_emb_weights,**kwargs)
-        self.cmp_encoder = SeqReader(self.n_tokens, _gcn_emb_weights, **kwargs)
+        self.inp_encoder = SeqReader(self.n_tokens, _gcn_emb_weights, vocab, **kwargs)
+        self.cmp_encoder = SeqReader(self.n_tokens, _gcn_emb_weights, vocab, **kwargs)
 
         # backward-compatibility for older version of the project
         kwargs["rnn_size"] = kwargs.get("dec_rnn_size", kwargs.get("rnn_size"))
         enc_size = self.inp_encoder.rnn_size
         # self.n_tokens实际上存的是词向量，用于初始化嵌入层
-        self.compressor = AttSeqDecoder(self.n_tokens, enc_size, err_control, _gcn_emb_weights,**kwargs)
+        self.compressor = AttSeqDecoder(self.n_tokens, enc_size, err_control, _gcn_emb_weights, **kwargs)
         # 默认不进行err control
         self.decompressor = AttSeqDecoder(self.n_tokens, enc_size, False, _gcn_emb_weights, **kwargs)
 
@@ -167,10 +166,10 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
         fakes[:, 0] = self.sos
         fakes[:, 1] = inputs[:, 0]
         for i, len_ in enumerate(src_lengths):
-            fakes[i, 2] = inputs[i, len_.item()-1]
+            fakes[i, 2] = inputs[i, len_.item() - 1]
         return fakes
 
-    def generate(self, inputs, src_lengths, trg_seq_len, mask_matrix=None,inp_src=None, vocab=None, region=None):
+    def generate(self, inputs, src_lengths, trg_seq_len, mask_matrix=None, inp_src=None, vocab=None, region=None):
         # ENCODER
         enc1_results = self.inp_encoder(inputs, None, src_lengths)
         outs_enc1, hn_enc1 = enc1_results[-2:]
@@ -187,7 +186,7 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
         dec1_results = self.compressor(inp_fake, outs_enc1, dec_init,
                                        enc_lengths=src_lengths,
                                        sampling_prob=1.,
-                                       desired_lengths=trg_seq_len, mask_matrix=mask_matrix,inp_src=inp_src,
+                                       desired_lengths=trg_seq_len, mask_matrix=mask_matrix, inp_src=inp_src,
                                        vocab=vocab, region=region)
         return enc1_results, dec1_results
 
@@ -216,8 +215,7 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
         # --------------------------------------------
         # ENCODER-1 (Compression)
         # --------------------------------------------
-        poi_src = devect(inp_src,vocab,pp=True)
-        enc1_results = self.inp_encoder(inp_src, poi_src, None, src_lengths,
+        enc1_results = self.inp_encoder(inp_src, None, src_lengths,
                                         word_dropout=self.enc_token_dropout)
         # encoder的输出以及最后一个的隐向量.注意此处是双向的lstm。num_layer = 2
         # outs_enc1(batch,seq_len,hid_size * bidirection), hn_enc1 (num_layer,batch,hid_size) * bidirection
@@ -230,7 +228,7 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
         _dec1_init = self._bridge(self.src_bridge, hn_enc1, src_lengths,
                                   latent_lengths)
         # inp_fake (batch,seq_len + 1),因为在decoder中，输入是未知的，即需要上一个时刻的输出来作为下一时刻的输入，所以此处相当于先声明一个向量，先给他先送进去。
-        inp_fake = self._fake_inputs(inp_src, latent_lengths,src_lengths)
+        inp_fake = self._fake_inputs(inp_src, latent_lengths, src_lengths)
 
         dec1_results = self.compressor(inp_fake, outs_enc1, _dec1_init,
                                        enc_lengths=src_lengths,

@@ -277,7 +277,7 @@ class RNNModule(nn.Module, RecurrentHelper):
 
 # 模型1/2，即模型的encoder部分
 class SeqReader(nn.Module, RecurrentHelper):
-    def __init__(self, ntokens,_gcn_emb_weights, **kwargs):
+    def __init__(self, ntokens,_gcn_emb_weights, vocab, **kwargs):
         super(SeqReader, self).__init__()
 
         ############################################
@@ -306,8 +306,8 @@ class SeqReader(nn.Module, RecurrentHelper):
 
 
         # 此处自己设计的词嵌入
-        self.embed = Embed(ntokens, self.emb_size, _gcn_emb_weights, self.gnn_latent_dim,
-                           noise=self.embed_noise, dropout=self.embed_dropout)
+        self.embed = Embed(ntokens, self.emb_size, _gcn_emb_weights, self.gnn_latent_dim, vocab=vocab,
+                           noise=self.embed_noise, dropout=self.embed_dropout,gnn_used=self.gnn_used)
         if self.gnn_used:
             self.emb_size += self.gnn_latent_dim
         self.encoder = RNNModule(input_size=self.emb_size,
@@ -368,8 +368,8 @@ class SeqReader(nn.Module, RecurrentHelper):
         else:
             return outputs, hidden
 
-    def forward(self, src, poi_src, hidden=None, lengths=None, word_dropout=0.0):
-        embeds = self.embed(src,poi_src)
+    def forward(self, src, hidden=None, lengths=None, word_dropout=0.0):
+        embeds = self.embed(src)
 
         if word_dropout > 0:
             embeds, mask = drop_tokens(embeds, word_dropout)
@@ -673,6 +673,7 @@ class AttSeqDecoder(nn.Module):
             ho = torch.tanh(ho)
 
         # 5. Project the context-aware vector to the vocabulary.gumbel_softmax
+        # print(ho.shape,self.Wo)
         dec_logits = self.Wo(ho)
 
         return dec_logits, outputs, state, ho, att_scores

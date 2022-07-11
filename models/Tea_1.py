@@ -31,6 +31,8 @@ from utils.opts import seq2seq2seq_options
 from utils.training import load_checkpoint
 from utils.transfer import freeze_module
 import pickle
+from models.GL_home import gl_vocab
+
 from preprocess.SpatialRegionTools import SpacialRegion
 from sklearn.neighbors import KDTree
 
@@ -105,6 +107,8 @@ val_data = AEDataset(config["data"]["val_path"],
 
 val_data.vocab = train_data.vocab
 vocab = train_data.vocab
+global gl_vocab
+gl_vocab = vocab
 
 # define a dataloader, which handles the way a dataset will be loaded,
 # like batching, shuffling and so on ...
@@ -121,7 +125,7 @@ val_loader = DataLoader(val_data, batch_size=config["batch_size"],
 
 # Define the model
 n_tokens = len(train_data.vocab)
-model = Seq2Seq2Seq(n_tokens, **config["model"])
+model = Seq2Seq2Seq(n_tokens, vocab, **config["model"])
 criterion = nn.CrossEntropyLoss(ignore_index=0)
 
 # Load Pretrained Word Embeddings

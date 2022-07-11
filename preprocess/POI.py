@@ -10,8 +10,8 @@ from sklearn.neighbors import KDTree
 import numpy as np
 from preprocess.SpatialRegionTools import cell2gps
 
-# todo 可以在这里预处理每一个GPS点对应的poi点，那么就可以获取一条原始轨迹和一条poi轨迹
-# todo 具体规则如下：设定一个e代表阈值，若GPS点最近的poi点的距离小于e，那么可用当前poi点进行表示。否则，则用unk（id为0）表示。
+# 可以在这里预处理每一个GPS点对应的poi点，那么就可以获取一条原始轨迹和一条poi轨迹
+# 具体规则如下：设定一个e代表阈值，若GPS点最近的poi点的距离小于e，那么可用当前poi点进行表示。否则，则用unk（id为0）表示。
 
 data = []
 # 构建poi KD树

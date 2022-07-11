@@ -173,6 +173,6 @@ def devectorize(data, id2tok, pp=True):
         data = [[rules.get(x, x) for x in seq] for seq in data]
 
         # remove repetitions
-        data = [[x[0] for x in groupby(seq)] for seq in data]
+        # data = [[x[0] for x in groupby(seq)] for seq in data]
     data = [[x if x != 'UNK' else '' for x in seq] for seq in data]
     return data

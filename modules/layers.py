@@ -5,7 +5,8 @@ from torch import nn
 from torch.autograd import Variable
 
 from modules.helpers import sequence_mask, masked_normalization_inf
-from models.GL_home import get_gid2poi
+from models.GL_home import get_gid2poi,get_vocab
+from utils.data_parsing import devect
 
 class GaussianNoise(nn.Module):
     def __init__(self, stddev, mean=.0):
@@ -40,6 +41,7 @@ class Embed(nn.Module):
                  embedding_dim,
                  gnn_emb_weights,
                  gnn_latent_dim,
+                 vocab=None,
                  embeddings=None,
                  noise=.0,
                  dropout=.0,
@@ -57,6 +59,7 @@ class Embed(nn.Module):
 
         self.norm = norm
         self.gnn_used = gnn_used
+        self.vocab = vocab
 
         # define the embedding layer, with the corresponding dimensions
         self.embedding = nn.Embedding(num_embeddings=num_embeddings,
@@ -117,6 +120,16 @@ class Embed(nn.Module):
         flat_embs = flat_probs.mm(self.embedding.weight)
         embs = flat_embs.view(dists.size(0), dists.size(1), flat_embs.size(1))
 
+        if self.gnn_used:
+            gl_gid2poi = get_gid2poi()
+            out, idx = torch.max(flat_probs, -1)
+            for i in range(idx.size(-1)):
+                gid = self.vocab.id2tok.get(idx[i].item())
+                idx[i] = gl_gid2poi.get(gid,0)
+            gnn_embeddings = self.node2vec(idx)
+            poi_embeddings = self.GCN(gnn_embeddings)
+            poi_embeddings = poi_embeddings.view(dists.size(0),dists.size(1),poi_embeddings.size(-1))
+            embs = torch.cat([embs, poi_embeddings], -1)
         # apply layer normalization on the expectation
         if self.norm:
             embs = self.layer_norm(embs)
@@ -126,7 +139,7 @@ class Embed(nn.Module):
 
         return embs
 
-    def forward(self, x, poi_x):
+    def forward(self, x):
         """
         This is the heart of the model. This function, defines how the data
         passes through the network.
@@ -138,14 +151,16 @@ class Embed(nn.Module):
         """
         embeddings = self.embedding(x)
         if self.gnn_used:
-            # todo 此处添加图表征向量，然后拼接
+            # 此处添加图表征向量，然后拼接
             # with open('../datasets/gid2poi.txt', 'rb') as f:
             #     var_a = pickle.load(f)
             # gid2poi = pickle.loads(var_a)
+
+            poi_x = devect(x, self.vocab, pp=True)
             gl_gid2poi = get_gid2poi()
             # 1.x(batch * max_len) 需要找到trj中每一个点p最近的poi点P，这一步可以放到初始化上操作
             # 2.batch_emb = self.embedding(x)，表示node2vec
-            poi_id_ = [ [gl_gid2poi.get(p,0) for p in seq] for seq in poi_x]
+            poi_id_ = [[gl_gid2poi.get(p,0) for p in seq] for seq in poi_x]
             poi_id = torch.tensor(poi_id_).to(x)
             gnn_embeddings = self.node2vec(poi_id)
             # 3.batch_emb = self.GCN(batch_emb)，经过一个全连接层得到最后的表征向量

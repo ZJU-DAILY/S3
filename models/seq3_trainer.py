@@ -180,6 +180,65 @@ class Seq3Trainer(Trainer):
 
         return mean(loss)
 
+
+    def r(self,p,trj):
+        batch = p.size(0)
+        ll = torch.zeros(batch).to(p)
+        max_len = trj.size(1)
+        for i in range(max_len):
+            p2 = trj[:,i,:]
+            l = pairwise_loss(p, p2, dist="cosine")
+            ll.add(l)
+
+        # for i in range(batch):
+        #     p_vector = p[i]
+        #     trj_vector = trj[i]
+        #     tmp = []
+        #     for p2_vector in trj_vector:
+        #         l = pairwise_loss(p_vector, p2_vector, dist="cosine")
+        #         tmp.append(l)
+        #     ll.append(np.max(tmp))
+        # return np.array(ll)
+        return ll.tolist()
+
+    def _sematic_loss(self, inp, dec1, src_lengths, trg_lengths):
+
+        enc_mask = sequence_mask(src_lengths).unsqueeze(-1).float()
+        dec_mask = sequence_mask(trg_lengths - 1).unsqueeze(-1).float()
+
+        enc_embs = self.model.inp_encoder.embed(inp) * enc_mask
+        if dec1[3] is None:
+            print("dec1[3] is none")
+        dec_embs = self.model.compressor.embed.expectation(dec1[3]) * dec_mask
+
+        # 先对source序列中的点进行遍历
+        max_len = enc_embs.size(1)
+        sim = np.zeros(enc_embs.size(0))
+        for i in range(max_len):
+            batch_p = enc_embs[:,i,:]
+            batch_trj = dec_embs
+            tmp = self.r(batch_p,batch_trj)
+            sim += tmp
+        # 计算的是所有batch的
+        sim = [sim[i] / length.item() for i, length in enumerate(src_lengths)]
+        # 将所有batch的结果求平均
+        sim = np.mean(sim)
+
+        # 接下来对trg_src做类似的处理
+        max_len = dec_embs.size(1)
+        sim_2 = np.zeros(dec_embs.size(0))
+        for i in range(max_len):
+            batch_p = dec_embs[:, i, :]
+            batch_trj = enc_embs
+            tmp = self.r(batch_p, batch_trj)
+            sim_2 += tmp
+        # 计算的是所有batch的
+        sim_2 = [sim_2[i] / length.item() for i, length in enumerate(trg_lengths)]
+        # 将所有batch的结果求平均
+        sim_2 = np.mean(sim_2)
+        print()
+        return (sim + sim_2) / 2
+
     def _process_batch(self, inp_x, out_x, inp_xhat, out_xhat,
                        x_lengths, xhat_lengths):
 
@@ -248,8 +307,8 @@ class Seq3Trainer(Trainer):
         # --------------------------------------------------------------
         if self.config["model"]["local_topic_loss"]:
             local_topic_loss, weight = self._local_topic_loss(inp_x, dec1,
-                                                                  x_lengths,
-                                                                  latent_lengths)
+                                                              x_lengths,
+                                                              latent_lengths)
             batch_outputs["local_weight"] = weight
             losses.append(local_topic_loss)
         else:
@@ -313,7 +372,6 @@ class Seq3Trainer(Trainer):
         vocab = self._get_vocab()
         region = self._get_region()
 
-
         iterator = self.valid_loader
         with torch.no_grad():
             for i_batch, batch in enumerate(iterator, 1):
@@ -341,12 +399,15 @@ class Seq3Trainer(Trainer):
 
                 # 模型推理
                 enc, dec = self.model.generate(inp_src, src_lengths,
-                                               latent_lengths,mask_matrix=mask_matrix,inp_src=inp_src,vocab=vocab,region=region)
+                                               latent_lengths, mask_matrix=mask_matrix, inp_src=inp_src, vocab=vocab,
+                                               region=region)
                 losses = []
                 # --------------------------------------------------------------
                 # 1 - SED loss
                 # --------------------------------------------------------------
                 loss_sed = self._sed_loss(inp_src, dec)
+
+                self._sematic_loss(inp_src, dec, src_lengths, latent_lengths)
                 # --------------------------------------------------------------
                 # 2 - LENGTH Penalty
                 # --------------------------------------------------------------

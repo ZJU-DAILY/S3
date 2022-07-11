@@ -1,5 +1,5 @@
 checkpoint_interval: 5000 # how often (batches) to save a checkpoint
-eval_interval: 500        # how often (batches) to evaluate the model on the dev set. Note: eval_interval need to be smaller than train_data_size / batch_size (batch number in one epoch)
+eval_interval: 100        # how often (batches) to evaluate the model on the dev set. Note: eval_interval need to be smaller than train_data_size / batch_size (batch number in one epoch)
 #eval_interval: 10
 log_interval: 50          # how often (batches) to log the training process to console
 batch_size: 20           # size of a batch-128
@@ -7,7 +7,7 @@ batch_size: 20           # size of a batch-128
 epochs: 20                # number of epochs.default-5
 num_workers: 0
 
-plot_norms: True  # Plot the gradient norms of each loss wrt to the compressor
+plot_norms: False  # Plot the gradient norms of each loss wrt to the compressor
 
 lr: 0.001        # Learning rate of the optimizer
 weight_decay: 0.  # Weight decay value of the optimizer
@@ -97,7 +97,7 @@ model:
   # PARAMETER SHARING
   ################################################
   tie_decoder_outputs: True     # tie the output layers of both decoders (projections to vocab)
-  tie_embedding_outputs: True   # tie the embedding and output layers of both decoders
+  tie_embedding_outputs: False   # 为了让程序能跑起来，先舍弃这一层的绑定。将嵌入层和decoder的输出层绑定。tie the embedding and output layers of both decoders
   tie_embedding: True           # tie all the embedding layers together
   tie_decoders: False           # tie the decoders of the compressor and reconstructor
   tie_encoders: True            # tie the encoders of the compressor and reconstructor
