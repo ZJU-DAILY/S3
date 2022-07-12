@@ -229,7 +229,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, key_dict, score)
             (inp_src, out_src, inp_trg, out_trg,
              src_lengths, trg_lengths) = batch
 
-            trg_lengths = torch.clamp(src_lengths * max_ratio, min=8, max=16)
+            trg_lengths = torch.clamp(src_lengths * max_ratio, min=45, max=150)
             trg_lengths = torch.floor(trg_lengths)
 
             m_zeros = torch.zeros(inp_src.size(0), vocab.size).to(inp_src)
@@ -275,7 +275,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, key_dict, score)
 # main
 # path = os.path.join(BASE_DIR, "checkpoints/best_model")
 path = None
-checkpoint = "seq3.full_-plot_20"
+checkpoint = "seq3.full_-prior"
 seed = 1
 device = "cuda"
 verbose = True
@@ -309,27 +309,27 @@ for x in score.items():
     num = x[1][2]
     print(rt, err_sum / num, key / num)
 
-print()
-points, src = readData(src_file, region)
+# print()
+# points, src = readData(src_file, region)
+#
+# exp = []
+# for ratio, tlen, AError in zip(range_, src_tlen, all_error):
+#     res, score_adp, score_squish = compress_adp(src, points, ratio / 10, d, tlen, AError, score_adp, score_squish)
+#     exp.append(res)
 
-exp = []
-for ratio, tlen, AError in zip(range_, src_tlen, all_error):
-    res, score_adp, score_squish = compress_adp(src, points, ratio / 10, d, tlen, AError, score_adp, score_squish)
-    exp.append(res)
-
-for x in score_adp.items():
-    rt = x[0]
-    err_sum = x[1][0]
-    key = x[1][1]
-    num = x[1][2]
-    print(rt, err_sum / num, key / num)
-print()
-for x in score_squish.items():
-    rt = x[0]
-    err_sum = x[1][0]
-    key = x[1][1]
-    num = x[1][2]
-    print(rt, err_sum / num, key / num)
+# for x in score_adp.items():
+#     rt = x[0]
+#     err_sum = x[1][0]
+#     key = x[1][1]
+#     num = x[1][2]
+#     print(rt, err_sum / num, key / num)
+# print()
+# for x in score_squish.items():
+#     rt = x[0]
+#     err_sum = x[1][0]
+#     key = x[1][1]
+#     num = x[1][2]
+#     print(rt, err_sum / num, key / num)
 # print()
 # exp_squish = []
 # for ratio, tlen, AError in zip(range_, src_tlen, all_error):

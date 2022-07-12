@@ -196,10 +196,10 @@ class RNNModule(nn.Module, RecurrentHelper):
                                batch_first=True)
         elif rnn_type == "GRU":
             self.rnn = nn.GRU(input_size=input_size,
-                          hidden_size=rnn_size,
-                          num_layers=num_layers,
-                          bidirectional=bidirectional,
-                          batch_first=True)
+                              hidden_size=rnn_size,
+                              num_layers=num_layers,
+                              bidirectional=bidirectional,
+                              batch_first=True)
 
         # the dropout "layer" for the output of the RNN
         self.dropout = nn.Dropout(dropout)
@@ -277,7 +277,7 @@ class RNNModule(nn.Module, RecurrentHelper):
 
 # 模型1/2，即模型的encoder部分
 class SeqReader(nn.Module, RecurrentHelper):
-    def __init__(self, ntokens,_gcn_emb_weights, vocab, **kwargs):
+    def __init__(self, ntokens, _gcn_emb_weights, **kwargs):
         super(SeqReader, self).__init__()
 
         ############################################
@@ -297,17 +297,16 @@ class SeqReader(nn.Module, RecurrentHelper):
         self.tie_weights = kwargs.get("tie_weights", False)
         self.pack = kwargs.get("pack", True)
         self.countdown = kwargs.get("countdown", False)
-        self.gnn_latent_dim = kwargs.get("gnn_latent_dim",128)
-        self.gnn_used = kwargs.get("gnn_used",True)
+        self.gnn_latent_dim = kwargs.get("gnn_latent_dim", 128)
+        self.gnn_used = kwargs.get("gnn_used", True)
 
         ############################################
         # Layers
         ############################################
 
-
         # 此处自己设计的词嵌入
-        self.embed = Embed(ntokens, self.emb_size, _gcn_emb_weights, self.gnn_latent_dim, vocab=vocab,
-                           noise=self.embed_noise, dropout=self.embed_dropout,gnn_used=self.gnn_used)
+        self.embed = Embed(ntokens, self.emb_size, _gcn_emb_weights, self.gnn_latent_dim,
+                           noise=self.embed_noise, dropout=self.embed_dropout, gnn_used=self.gnn_used)
         if self.gnn_used:
             self.emb_size += self.gnn_latent_dim
         self.encoder = RNNModule(input_size=self.emb_size,
@@ -368,8 +367,8 @@ class SeqReader(nn.Module, RecurrentHelper):
         else:
             return outputs, hidden
 
-    def forward(self, src, hidden=None, lengths=None, word_dropout=0.0):
-        embeds = self.embed(src)
+    def forward(self, src, hidden=None, lengths=None, word_dropout=0.0, vocab=None):
+        embeds = self.embed(src, vocab)
 
         if word_dropout > 0:
             embeds, mask = drop_tokens(embeds, word_dropout)
@@ -389,7 +388,7 @@ class SeqReader(nn.Module, RecurrentHelper):
 
 # 模型2/2，即模型的decoder部分
 class AttSeqDecoder(nn.Module):
-    def __init__(self, trg_ntokens, enc_size, err_control_,_gcn_emb_weights, **kwargs):
+    def __init__(self, trg_ntokens, enc_size, err_control_, _gcn_emb_weights, **kwargs):
         super(AttSeqDecoder, self).__init__()
 
         ############################################
@@ -417,15 +416,15 @@ class AttSeqDecoder(nn.Module):
         self.input_feeding_learnt = kwargs.get("input_feeding_learnt", False)
         self.coverage = kwargs.get("attention_coverage", False)
         self.rnn_type = kwargs.get("rnn_type", "LSTM")
-        self.gnn_latent_dim = kwargs.get("gnn_latent_dim",128)
-        self.gnn_used = kwargs.get("gnn_used",True)
+        self.gnn_latent_dim = kwargs.get("gnn_latent_dim", 128)
+        self.gnn_used = kwargs.get("gnn_used", True)
 
         ############################################
         # Layers
         ############################################
         # _gcn_emb_weights = gcn_emb()
         # 轨迹点嵌入
-        self.embed = Embed(trg_ntokens, emb_size,_gcn_emb_weights,self.gnn_latent_dim,
+        self.embed = Embed(trg_ntokens, emb_size, _gcn_emb_weights, self.gnn_latent_dim,
                            noise=embed_noise,
                            dropout=embed_dropout)
         if self.gnn_used:
@@ -449,14 +448,14 @@ class AttSeqDecoder(nn.Module):
 
         if self.rnn_type == "LSTM":
             self.rnn = nn.LSTM(input_size=dec_input_size,
-                           hidden_size=rnn_size,
-                           num_layers=rnn_layers,
-                           batch_first=True)
-        elif self.rnn_type == "GRU":
-            self.rnn = nn.GRU(input_size=dec_input_size,
                                hidden_size=rnn_size,
                                num_layers=rnn_layers,
                                batch_first=True)
+        elif self.rnn_type == "GRU":
+            self.rnn = nn.GRU(input_size=dec_input_size,
+                              hidden_size=rnn_size,
+                              num_layers=rnn_layers,
+                              batch_first=True)
 
         self.rnn_dropout = nn.Dropout(rnn_dropout)
 
@@ -520,7 +519,7 @@ class AttSeqDecoder(nn.Module):
         return prob > 0 and torch.rand(1).item() < prob
 
     def get_embedding(self, step, trg, logits, sampling_prob, argmax, hard,
-                      tau, mask_matrix):
+                      tau, mask_matrix, vocab):
         """
         Get the token embedding for the current timestep. Possible options:
         - select the embedding by a given index
@@ -554,7 +553,7 @@ class AttSeqDecoder(nn.Module):
 
             if argmax:  # get the argmax
                 maxv, maxi = logits[-1].max(dim=2)
-                e_i = self.embed(maxi)
+                e_i = self.embed(maxi, vocab)
                 return e_i, None
 
             else:  # get the expected embedding, parameterized by the posterior
@@ -584,12 +583,12 @@ class AttSeqDecoder(nn.Module):
                 # print(A.max(-1)[1])
                 # print(dist.max(-1)[1])
 
-                e_i = self.embed.expectation(dist.unsqueeze(1))
+                e_i = self.embed.expectation(dist.unsqueeze(1), vocab)
                 return e_i, dist
         else:
 
             w_i = trg[:, step].unsqueeze(1)
-            e_i = self.embed(w_i)
+            e_i = self.embed(w_i, vocab)
             return e_i, None
 
     # 初始化context向量
@@ -731,7 +730,7 @@ class AttSeqDecoder(nn.Module):
         for i in range(max_length):
             # obtain the input word embedding，返回的词向量和对应词id（即经过softmax之后转化为one-hot的词）
             e_i, d_i = self.get_embedding(i, gold_tokens, logits,
-                                          sampling_prob, argmax, hard, tau, mask_matrix)
+                                          sampling_prob, argmax, hard, tau, mask_matrix, vocab)
 
             if word_dropout > 0 and i > 0:
                 e_i, mask = drop_tokens(e_i, word_dropout)

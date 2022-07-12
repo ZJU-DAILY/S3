@@ -41,7 +41,7 @@ class Embed(nn.Module):
                  embedding_dim,
                  gnn_emb_weights,
                  gnn_latent_dim,
-                 vocab=None,
+                 # vocab=None,
                  embeddings=None,
                  noise=.0,
                  dropout=.0,
@@ -59,7 +59,7 @@ class Embed(nn.Module):
 
         self.norm = norm
         self.gnn_used = gnn_used
-        self.vocab = vocab
+        # self.vocab = vocab
 
         # define the embedding layer, with the corresponding dimensions
         self.embedding = nn.Embedding(num_embeddings=num_embeddings,
@@ -109,7 +109,7 @@ class Embed(nn.Module):
 
         return embeddings
 
-    def expectation(self, dists):
+    def expectation(self, dists, vocab):
         """
         Obtain a weighted sum (expectation) of all the embeddings, from a
         given probability distribution.
@@ -122,9 +122,10 @@ class Embed(nn.Module):
 
         if self.gnn_used:
             gl_gid2poi = get_gid2poi()
+            # todo 选择概率最大的点进行嵌入，这样也是存在问题的
             out, idx = torch.max(flat_probs, -1)
             for i in range(idx.size(-1)):
-                gid = self.vocab.id2tok.get(idx[i].item())
+                gid = vocab.id2tok.get(idx[i].item())
                 idx[i] = gl_gid2poi.get(gid,0)
             gnn_embeddings = self.node2vec(idx)
             poi_embeddings = self.GCN(gnn_embeddings)
@@ -139,7 +140,7 @@ class Embed(nn.Module):
 
         return embs
 
-    def forward(self, x):
+    def forward(self, x, vocab):
         """
         This is the heart of the model. This function, defines how the data
         passes through the network.
@@ -156,7 +157,7 @@ class Embed(nn.Module):
             #     var_a = pickle.load(f)
             # gid2poi = pickle.loads(var_a)
 
-            poi_x = devect(x, self.vocab, pp=True)
+            poi_x = devect(x, vocab, pp=True)
             gl_gid2poi = get_gid2poi()
             # 1.x(batch * max_len) 需要找到trj中每一个点p最近的poi点P，这一步可以放到初始化上操作
             # 2.batch_emb = self.embedding(x)，表示node2vec

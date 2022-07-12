@@ -8,7 +8,7 @@ from utils.gcn_emb import gcn_emb
 
 class Seq2Seq2Seq(nn.Module, RecurrentHelper):
 
-    def __init__(self, n_tokens, vocab, **kwargs):
+    def __init__(self, n_tokens, **kwargs):
         super(Seq2Seq2Seq, self).__init__()
 
         ############################################
@@ -45,8 +45,8 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
 
         # backward-compatibility for older version of the project
         kwargs["rnn_size"] = kwargs.get("enc_rnn_size", kwargs.get("rnn_size"))
-        self.inp_encoder = SeqReader(self.n_tokens, _gcn_emb_weights, vocab, **kwargs)
-        self.cmp_encoder = SeqReader(self.n_tokens, _gcn_emb_weights, vocab, **kwargs)
+        self.inp_encoder = SeqReader(self.n_tokens, _gcn_emb_weights, **kwargs)
+        self.cmp_encoder = SeqReader(self.n_tokens, _gcn_emb_weights, **kwargs)
 
         # backward-compatibility for older version of the project
         kwargs["rnn_size"] = kwargs.get("dec_rnn_size", kwargs.get("rnn_size"))
@@ -171,7 +171,7 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
 
     def generate(self, inputs, src_lengths, trg_seq_len, mask_matrix=None, inp_src=None, vocab=None, region=None):
         # ENCODER
-        enc1_results = self.inp_encoder(inputs, None, src_lengths)
+        enc1_results = self.inp_encoder(inputs, None, src_lengths,vocab=vocab)
         outs_enc1, hn_enc1 = enc1_results[-2:]
 
         # DECODER
@@ -216,7 +216,7 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
         # ENCODER-1 (Compression)
         # --------------------------------------------
         enc1_results = self.inp_encoder(inp_src, None, src_lengths,
-                                        word_dropout=self.enc_token_dropout)
+                                        word_dropout=self.enc_token_dropout,vocab=vocab)
         # encoder的输出以及最后一个的隐向量.注意此处是双向的lstm。num_layer = 2
         # outs_enc1(batch,seq_len,hid_size * bidirection), hn_enc1 (num_layer,batch,hid_size) * bidirection
         outs_enc1, hn_enc1 = enc1_results[-2:]
@@ -242,7 +242,7 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
         # ENCODER-2 (Reconstruction)
         # --------------------------------------------
         # cmp_embeddings (batch,seq_len,emb_size)
-        cmp_embeddings = self.compressor.embed.expectation(dists_dec1)
+        cmp_embeddings = self.compressor.embed.expectation(dists_dec1,vocab)
         cmp_lengths = latent_lengths - 1  # 删除之前的<sos>起始符，因为作为下一个encoder的输入是不需要起始符的
 
         # !!! Limit the communication only through the embs
@@ -265,6 +265,7 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
                                          sampling_prob=sampling,
                                          tau=tau,
                                          desired_lengths=dec2_lengths,
-                                         word_dropout=self.dec_token_dropout)
+                                         word_dropout=self.dec_token_dropout,
+                                         vocab=vocab)
 
         return enc1_results, dec1_results, enc2_results, dec2_results

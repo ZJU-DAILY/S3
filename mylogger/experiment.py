@@ -286,7 +286,8 @@ class Experiment(object):
 
     def save(self):
         try:
-            self.to_pickle()
+            # self.to_pickle()
+            print("We don't save pickle...")
         except:
             print("Failed to save to pickle...")
 

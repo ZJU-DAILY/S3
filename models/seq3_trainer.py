@@ -54,7 +54,7 @@ class Seq3Trainer(Trainer):
                                      "rnn"))
         return c_grad_norm
 
-    def _topic_loss(self, inp, dec1, src_lengths, trg_lengths):
+    def _topic_loss(self, inp, dec1, src_lengths, trg_lengths,vocab):
         """
         Compute the pairwise distance of various outputs of the seq^3 architecture.
         Args:
@@ -68,10 +68,10 @@ class Seq3Trainer(Trainer):
         enc_mask = sequence_mask(src_lengths).unsqueeze(-1).float()
         dec_mask = sequence_mask(trg_lengths - 1).unsqueeze(-1).float()
 
-        enc_embs = self.model.inp_encoder.embed(inp)
+        enc_embs = self.model.inp_encoder.embed(inp,vocab)
         if dec1[3] is None:
             print("dec1[3] is none")
-        dec_embs = self.model.compressor.embed.expectation(dec1[3])
+        dec_embs = self.model.compressor.embed.expectation(dec1[3],vocab)
 
         if self.config["model"]["topic_idf"]:
             enc1_energies = self.model.idf(inp)
@@ -180,13 +180,12 @@ class Seq3Trainer(Trainer):
 
         return mean(loss)
 
-
-    def r(self,p,trj):
+    def r(self, p, trj):
         batch = p.size(0)
         ll = torch.zeros(batch).to(p)
         max_len = trj.size(1)
         for i in range(max_len):
-            p2 = trj[:,i,:]
+            p2 = trj[:, i, :]
             l = pairwise_loss(p, p2, dist="cosine")
             ll.add(l)
 
@@ -201,23 +200,23 @@ class Seq3Trainer(Trainer):
         # return np.array(ll)
         return ll.tolist()
 
-    def _sematic_loss(self, inp, dec1, src_lengths, trg_lengths):
+    def _sematic_loss(self, inp, dec1, src_lengths, trg_lengths,vocab):
 
         enc_mask = sequence_mask(src_lengths).unsqueeze(-1).float()
         dec_mask = sequence_mask(trg_lengths - 1).unsqueeze(-1).float()
 
-        enc_embs = self.model.inp_encoder.embed(inp) * enc_mask
+        enc_embs = self.model.inp_encoder.embed(inp,vocab) * enc_mask
         if dec1[3] is None:
             print("dec1[3] is none")
-        dec_embs = self.model.compressor.embed.expectation(dec1[3]) * dec_mask
+        dec_embs = self.model.compressor.embed.expectation(dec1[3],vocab) * dec_mask
 
         # 先对source序列中的点进行遍历
         max_len = enc_embs.size(1)
         sim = np.zeros(enc_embs.size(0))
         for i in range(max_len):
-            batch_p = enc_embs[:,i,:]
+            batch_p = enc_embs[:, i, :]
             batch_trj = dec_embs
-            tmp = self.r(batch_p,batch_trj)
+            tmp = self.r(batch_p, batch_trj)
             sim += tmp
         # 计算的是所有batch的
         sim = [sim[i] / length.item() for i, length in enumerate(src_lengths)]
@@ -320,7 +319,7 @@ class Seq3Trainer(Trainer):
         if self.config["model"]["topic_loss"]:
             topic_loss, attentions = self._topic_loss(inp_x, dec1,
                                                       x_lengths,
-                                                      latent_lengths)
+                                                      latent_lengths,vocab)
             batch_outputs["attention"] = attentions
             losses.append(topic_loss)
         else:
@@ -407,7 +406,7 @@ class Seq3Trainer(Trainer):
                 # --------------------------------------------------------------
                 loss_sed = self._sed_loss(inp_src, dec)
 
-                # self._sematic_loss(inp_src, dec, src_lengths, latent_lengths)
+                loss_semantic = self._sematic_loss(inp_src, dec, src_lengths, latent_lengths,vocab)
                 # --------------------------------------------------------------
                 # 2 - LENGTH Penalty
                 # --------------------------------------------------------------
@@ -424,7 +423,7 @@ class Seq3Trainer(Trainer):
                 #                                      src_lengths,
                 #                                      latent_lengths)
                 #     losses.append(topic_loss)
-                loss_sum = loss_sed  # + loss_sum + sum(losses).item()
+                loss_sum = loss_sed + np.mean(loss_semantic)  # + loss_sum + sum(losses).item()
         return loss_sum
 
     def _get_vocab(self):

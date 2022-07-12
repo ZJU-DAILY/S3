@@ -1,10 +1,10 @@
 checkpoint_interval: 5000 # how often (batches) to save a checkpoint
-eval_interval: 100        # how often (batches) to evaluate the model on the dev set. Note: eval_interval need to be smaller than train_data_size / batch_size (batch number in one epoch)
+eval_interval: 50        # 100 how often (batches) to evaluate the model on the dev set. Note: eval_interval need to be smaller than train_data_size / batch_size (batch number in one epoch)
 #eval_interval: 10
 log_interval: 50          # how often (batches) to log the training process to console
 batch_size: 20           # size of a batch-128
 #batch_size: 20
-epochs: 20                # number of epochs.default-5
+epochs: 1                # number of epochs.default-5
 num_workers: 0
 
 plot_norms: False  # Plot the gradient norms of each loss wrt to the compressor
@@ -23,7 +23,7 @@ data:
   val_path: val.src  # path to the source validation data
   ref_path: eval.src    # path to the target development data (验证集，dev set)
 
-  seq_len: 50   # maximum length of source texts
+  seq_len: 500   # maximum length of source texts
   oovs: 10      # number of special OOV tokens (www.aclweb.org/anthology/K18-1040)
   swaps: 0.0    # percentage of local token swaps to the source text
 
@@ -61,7 +61,7 @@ model:
   #------------------------------------
   # Local Topic
   #------------------------------------
-  local_topic_loss: True                # enable/disable the prior loss
+  local_topic_loss: False                # enable/disable the prior loss
   loss_weight_local_topic: 2            # weight of the prior loss - λ_T
   # 度量两个向量的距离：1.余弦相似度（计算夹角） 2.欧氏距离（计算点的距离）那么欧式距离小 -> 夹角小，但是夹角小不一定能保证欧氏距离小。我们这里需要更苛刻的条件。
   local_topic_distance: euclidean          # distance metric for topic loss. Options: cosine, euclidean
@@ -86,12 +86,12 @@ model:
   ################################################
   min_ratio: 0.2          # min % of the sampled summary lengths
   max_ratio: 0.6          # max % of the sampled summary lengths
-  min_length: 6           # absolute min length (words) of the sampled summary length
-  max_length: 30          # absolute max length (words) of the sampled summary length
+  min_length: 30           # absolute min length (words) of the sampled summary length
+  max_length: 300          # absolute max length (words) of the sampled summary length
   test_min_ratio: 0.3     # same as above but for inference
   test_max_ratio: 0.31    # same as above but for inference
-  test_min_length: 4      # same as above but for inference
-  test_max_length: 16     # same as above but for inference
+  test_min_length: 45      # same as above but for inference
+  test_max_length: 150     # same as above but for inference
 
   ################################################
   # PARAMETER SHARING
@@ -140,5 +140,5 @@ model:
   tau: 0.5          # Temperature of the distributions in the latent sequence
   learn_tau: True  # 为消除重复token做出了主要贡献。Learn the value of the temperature, as function of the output of the decoder(s)
   tau_0: 0.5        # Hyper-parameter that controls the upper-bound of the temperature.
-  mask: True
+  mask: False
   mask_fn: trj      #option: area or trj.

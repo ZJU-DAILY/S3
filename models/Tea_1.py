@@ -125,7 +125,7 @@ val_loader = DataLoader(val_data, batch_size=config["batch_size"],
 
 # Define the model
 n_tokens = len(train_data.vocab)
-model = Seq2Seq2Seq(n_tokens, vocab, **config["model"])
+model = Seq2Seq2Seq(n_tokens, **config["model"])
 criterion = nn.CrossEntropyLoss(ignore_index=0)
 
 # Load Pretrained Word Embeddings

@@ -100,7 +100,7 @@ def pairwise_loss(a, b, dist="cosine"):
 
 def sed_loss(region, src, trg):
     if len(src) == len(trg):
-        print()
+        print("the length of src is same with trg.")
     # p为慢指针（指向trg），f为快指针（指向src）。src的长度应该大于等于trg
     p = 0
     f = 0
