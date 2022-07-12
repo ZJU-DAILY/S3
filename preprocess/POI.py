@@ -28,7 +28,7 @@ with open('pickle.txt', 'rb') as f:
     var_a = pickle.load(f)
 region = pickle.loads(var_a)
 
-epi = 150
+epi = 0.01
 gid2poi = dict()
 dist_all = []
 
@@ -44,11 +44,10 @@ for _f in file:
                 x, y = cell2gps(region, p)
                 dists, idxs = tree.query(np.array([[x, y]]), 1)
                 dist_all.append(dists[0])
-                if dists[0] > epi:
-                    id = -1
-                else:
+                # 规范一下，若距离小于阈值，那么将这个网格id放入map中，否则就直接抛弃，这样可以在之后读取的时候设置。
+                if dists[0] <= epi:
                     id = idxs[0].tolist()[0]
-                gid2poi[str(p)] = id
+                    gid2poi[str(p)] = id
 
 var_b = pickle.dumps(gid2poi)
 with open('../datasets/gid2poi.txt', 'wb') as f:
@@ -58,6 +57,6 @@ with open('../datasets/gid2poi.txt', 'wb') as f:
 with open('../datasets/gid2poi.txt', 'rb') as f:
     var_a = pickle.load(f)
 gid2poi = pickle.loads(var_a)
-print(gid2poi['178794'])
+# print(gid2poi['178794'])
 
 print(np.mean(dist_all))

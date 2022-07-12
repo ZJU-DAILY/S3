@@ -407,7 +407,7 @@ class Seq3Trainer(Trainer):
                 # --------------------------------------------------------------
                 loss_sed = self._sed_loss(inp_src, dec)
 
-                self._sematic_loss(inp_src, dec, src_lengths, latent_lengths)
+                # self._sematic_loss(inp_src, dec, src_lengths, latent_lengths)
                 # --------------------------------------------------------------
                 # 2 - LENGTH Penalty
                 # --------------------------------------------------------------

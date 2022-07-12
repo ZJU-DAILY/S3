@@ -160,6 +160,8 @@ class Embed(nn.Module):
             gl_gid2poi = get_gid2poi()
             # 1.x(batch * max_len) 需要找到trj中每一个点p最近的poi点P，这一步可以放到初始化上操作
             # 2.batch_emb = self.embedding(x)，表示node2vec
+            # 若在gl_gid2poi中找不到poi，则说明这个点附近没有可用的poi，那么理论上来说，应该给这个点设置一个空poi，之后会设置成矩阵的最后一个向量。
+            # todo 此处错误性地先设置为0
             poi_id_ = [[gl_gid2poi.get(p,0) for p in seq] for seq in poi_x]
             poi_id = torch.tensor(poi_id_).to(x)
             gnn_embeddings = self.node2vec(poi_id)

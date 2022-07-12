@@ -4,8 +4,8 @@ from preprocess.SpatialRegionTools import trip2seq, str2trip, seq2str, createVoc
 
 # todo 完成数据集的重新生成
 def createTrainVal(region, trjfile,
-                   ntrain=36000, nval=12000, neval=12000,
-                   min_length=15, max_length=50):
+                   ntrain=3600, nval=1200, neval=1200,
+                   min_length=150, max_length=500):
     # seq2str(seq) = join(map(string, seq), " ") * "\n"
 
     with open(trjfile, "r") as f:
@@ -40,12 +40,13 @@ def createTrainVal(region, trjfile,
             else:
                 break
 
-            if i % 10000 == 0:
+            if i % 1000 == 0:
                 print("Scaned ",i," trips...")
         trainsrc.close(), validsrc.close(), evalsrc.close()
     print(sum_)
-createVocab_save()
+path = "../datasets/beijing.pos"
+createVocab_save(path)
 with open('pickle.txt', 'rb') as f:
     var_a = pickle.load(f)
 region = pickle.loads(var_a)
-createTrainVal(region, "../datasets/porto.pos")
+createTrainVal(region, path)

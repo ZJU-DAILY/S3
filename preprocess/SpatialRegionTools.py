@@ -96,12 +96,14 @@ def makeVocab(region, trjfile):
     for trip in ss:
         i += 1
         if i % 1000 == 0:
-            print("no %i", i)
+            print(f"region reads trj_no {i}")
         s1 = trip[1: len(trip) - 2]
+        s1 = s1.strip("\n")
         s2 = s1.split("]")
-        for j in s2:
-            j = j.strip(',')
-            j = j.strip('[')
+        for _j in s2:
+            j = _j.strip(",").strip(" ").strip("[")
+            # j = j.strip(',')
+            # j = j.strip('[')
             if j == '':
                 continue
             x, y = j.split(',')
@@ -258,12 +260,12 @@ class SpacialRegion:
         numy = round(self.maxy - self.miny, 6) / ystep
         self.numy = int(math.ceil(numy))
 
-def createVocab_save():
+def createVocab_save(path):
     # 构建词表以及kdtree
-    region = SpacialRegion(minlon=-8.735152, minlat=40.953673, maxlon=-8.156309,
-                           maxlat=41.307945, xstep=100.0, ystep=100.0, minfreq=100,
-                           maxvocab_size=40000, k=10, vocab_start=4)
-    makeVocab(region, "../datasets/porto.pos")
+    region = SpacialRegion(minlon=115.7001, minlat=39.4, maxlon=117.39994,
+                           maxlat=41.59471, xstep=100.0, ystep=100.0, minfreq=100,
+                           maxvocab_size=15000, k=10, vocab_start=4)
+    makeVocab(region, path)
 
     var_b = pickle.dumps(region)
     with open('pickle.txt', 'wb') as f:
@@ -298,9 +300,8 @@ def str2trip(ss):
     trip = []
     s1 = ss[1: len(trip) - 2]
     s2 = s1.split("]")
-    for j in s2:
-        j = j.strip(',')
-        j = j.strip('[')
+    for _j in s2:
+        j = _j.strip(',').strip(" ").strip("[")
         if j == '':
             continue
         x, y = j.split(',')
