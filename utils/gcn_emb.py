@@ -47,4 +47,5 @@ def gcn_emb(emb_file="../datasets/beijing.emd",alpha=0.5,graph_file="../datasets
 
 # emb = gcn_emb("../datasets/beijing.emd",0.5,"../datasets/edge.edgelist")
 # # emb = gcn_emb("../datasets/karate.emd",0.5,"../datasets/edge.edgelist")
+# gcn_emb()
 # print()

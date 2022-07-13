@@ -28,9 +28,10 @@ with open('pickle.txt', 'rb') as f:
     var_a = pickle.load(f)
 region = pickle.loads(var_a)
 
-epi = 0.01
+epi = 0.05
 gid2poi = dict()
 dist_all = []
+point = set()
 
 file = ['train.src', 'val.src', 'infer.src']
 for _f in file:
@@ -41,6 +42,7 @@ for _f in file:
             trj = trj.split(" ")
             for p in trj:
                 p = int(p)
+                point.add(p)
                 x, y = cell2gps(region, p)
                 dists, idxs = tree.query(np.array([[x, y]]), 1)
                 dist_all.append(dists[0])
@@ -59,4 +61,4 @@ with open('../datasets/gid2poi.txt', 'rb') as f:
 gid2poi = pickle.loads(var_a)
 # print(gid2poi['178794'])
 
-print(np.mean(dist_all))
+print(np.mean(dist_all),f"gid2poi size: {len(gid2poi)}, the number of points: {len(point)}")

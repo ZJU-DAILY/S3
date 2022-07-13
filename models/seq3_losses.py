@@ -94,9 +94,26 @@ def pairwise_loss(a, b, dist="cosine"):
         dot = torch.bmm(a.unsqueeze(1), b.unsqueeze(-1)).squeeze()
         scaled_dot = dot.mean() / a.size(1)
         return - scaled_dot
+    elif dist == "cosine_max":
+        return 1 - F.cosine_similarity(a, b, -1)
     else:
         raise ValueError
 
+def r(p, trj):
+    batch = p.size(0)
+    min_l = None
+    max_len = trj.size(1)
+    for i in range(max_len):
+        p2 = trj[:, i, :]
+        # 由于pairwise_loss对每个batch做了平均，所以返回的就是一个值
+
+        l = pairwise_loss(p, p2, "cosine_max")
+        if min_l == None:
+            min_l = l
+        else:
+            # 将batch中的每一个更新，取最大值
+            min_l = torch.min(min_l, l)
+    return min_l.tolist()
 
 def sed_loss(region, src, trg):
     if len(src) == len(trg):

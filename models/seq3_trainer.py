@@ -1,7 +1,7 @@
 import torch
 from torch.nn import functional as F
 
-from models.seq3_losses import _kl_div, kl_length, pairwise_loss, sed_loss, energy_, energy_2
+from models.seq3_losses import _kl_div, kl_length, pairwise_loss, sed_loss, energy_, energy_2,r
 from models.seq3_utils import sample_lengths
 from modules.helpers import sequence_mask, avg_vectors, module_grad_wrt_loss
 from modules.training.trainer import Trainer
@@ -180,26 +180,6 @@ class Seq3Trainer(Trainer):
 
         return mean(loss)
 
-    def r(self, p, trj):
-        batch = p.size(0)
-        ll = torch.zeros(batch).to(p)
-        max_len = trj.size(1)
-        for i in range(max_len):
-            p2 = trj[:, i, :]
-            l = pairwise_loss(p, p2, dist="cosine")
-            ll.add(l)
-
-        # for i in range(batch):
-        #     p_vector = p[i]
-        #     trj_vector = trj[i]
-        #     tmp = []
-        #     for p2_vector in trj_vector:
-        #         l = pairwise_loss(p_vector, p2_vector, dist="cosine")
-        #         tmp.append(l)
-        #     ll.append(np.max(tmp))
-        # return np.array(ll)
-        return ll.tolist()
-
     def _sematic_loss(self, inp, dec1, src_lengths, trg_lengths,vocab):
 
         enc_mask = sequence_mask(src_lengths).unsqueeze(-1).float()
@@ -216,7 +196,7 @@ class Seq3Trainer(Trainer):
         for i in range(max_len):
             batch_p = enc_embs[:, i, :]
             batch_trj = dec_embs
-            tmp = self.r(batch_p, batch_trj)
+            tmp = r(batch_p, batch_trj)
             sim += tmp
         # 计算的是所有batch的
         sim = [sim[i] / length.item() for i, length in enumerate(src_lengths)]
@@ -229,13 +209,13 @@ class Seq3Trainer(Trainer):
         for i in range(max_len):
             batch_p = dec_embs[:, i, :]
             batch_trj = enc_embs
-            tmp = self.r(batch_p, batch_trj)
+            tmp = r(batch_p, batch_trj)
             sim_2 += tmp
         # 计算的是所有batch的
         sim_2 = [sim_2[i] / length.item() for i, length in enumerate(trg_lengths)]
         # 将所有batch的结果求平均
         sim_2 = np.mean(sim_2)
-        print()
+        # print(sim,sim_2)
         return (sim + sim_2) / 2
 
     def _process_batch(self, inp_x, out_x, inp_xhat, out_xhat,
@@ -402,28 +382,19 @@ class Seq3Trainer(Trainer):
                                                region=region)
                 losses = []
                 # --------------------------------------------------------------
-                # 1 - SED loss
+                # 1 - SED metric
                 # --------------------------------------------------------------
                 loss_sed = self._sed_loss(inp_src, dec)
 
+
+                # --------------------------------------------------------------
+                # 2 - Semantic metric
+                # --------------------------------------------------------------
                 loss_semantic = self._sematic_loss(inp_src, dec, src_lengths, latent_lengths,vocab)
-                # --------------------------------------------------------------
-                # 2 - LENGTH Penalty
-                # --------------------------------------------------------------
-                # if self.config["model"]["length_loss"]:
-                #     _vocab = self._get_vocab()
-                #     eos_id = _vocab.tok2id[_vocab.EOS]
-                #     length_loss = kl_length(dec[0], latent_lengths, eos_id)
-                #     losses.append(length_loss)
-                # --------------------------------------------------------------
-                # 3 - TOPIC
-                # --------------------------------------------------------------
-                # if self.config["model"]["topic_loss"]:
-                #     topic_loss, _ = self._topic_loss(inp_src, dec,
-                #                                      src_lengths,
-                #                                      latent_lengths)
-                #     losses.append(topic_loss)
-                loss_sum = loss_sed + np.mean(loss_semantic)  # + loss_sum + sum(losses).item()
+
+                # 两个metric之间设置一个权重，让他们数量级更加相似
+                lamda = 0.1
+                loss_sum = loss_sed + lamda * loss_semantic  # + loss_sum + sum(losses).item()
         return loss_sum
 
     def _get_vocab(self):

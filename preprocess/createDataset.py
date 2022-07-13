@@ -5,7 +5,7 @@ from preprocess.SpatialRegionTools import trip2seq, str2trip, seq2str, createVoc
 # todo 完成数据集的重新生成
 def createTrainVal(region, trjfile,
                    ntrain=3600, nval=1200, neval=1200,
-                   min_length=150, max_length=500):
+                   min_length=30, max_length=50):
     # seq2str(seq) = join(map(string, seq), " ") * "\n"
 
     with open(trjfile, "r") as f:
@@ -17,6 +17,8 @@ def createTrainVal(region, trjfile,
         sum_ = 0
         for i in range(len(ss)):
             trip = str2trip(ss[i])
+            if len(trip) > max_length:
+                trip = trip[:max_length]
             if not (min_length <= len(trip) <= max_length):
                 continue
 

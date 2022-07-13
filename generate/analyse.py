@@ -9,10 +9,9 @@ import functools
 import os
 import pickle
 import time
-from sys_config import BASE_DIR
 
 from modules.data.samplers import BucketBatchSampler
-from modules.helpers import getSED4GPS, squish
+from modules.helpers import getSED4GPS, squish, sequence_mask
 from preprocess.SpatialRegionTools import cell2gps
 from preprocess.SpatialRegionTools import SpacialRegion
 from sys_config import DATA_DIR
@@ -30,6 +29,7 @@ from utils.training import load_checkpoint
 import numpy as np
 from generate.utils import get_sed_loss
 from modules.helpers import adp
+from models.seq3_losses import r
 
 
 def readData(src_file, region):
@@ -51,6 +51,82 @@ def readData(src_file, region):
         src.append(src_)
     return points, src
 
+def sematic_cal(model, inp, dec1, src_lengths, trg_lengths,vocab):
+    enc_mask = sequence_mask(src_lengths).unsqueeze(-1).float()
+    dec_mask = sequence_mask(trg_lengths - 1).unsqueeze(-1).float()
+
+    enc_embs = model.inp_encoder.embed(inp, vocab) * enc_mask
+    if dec1[3] is None:
+        print("dec1[3] is none")
+    dec_embs = model.compressor.embed.expectation(dec1[3], vocab) * dec_mask
+
+    # 先对source序列中的点进行遍历
+    max_len = enc_embs.size(1)
+    sim = np.zeros(enc_embs.size(0))
+    for i in range(max_len):
+        batch_p = enc_embs[:, i, :]
+        batch_trj = dec_embs
+        tmp = r(batch_p, batch_trj)
+        sim += tmp
+    # 计算的是所有batch的
+    sim = [sim[i] / length.item() for i, length in enumerate(src_lengths)]
+    # 将所有batch的结果求平均
+    sim = np.mean(sim)
+
+    # 接下来对trg_src做类似的处理
+    max_len = dec_embs.size(1)
+    sim_2 = np.zeros(dec_embs.size(0))
+    for i in range(max_len):
+        batch_p = dec_embs[:, i, :]
+        batch_trj = enc_embs
+        tmp = r(batch_p, batch_trj)
+        sim_2 += tmp
+    # 计算的是所有batch的
+    sim_2 = [sim_2[i] / length.item() for i, length in enumerate(trg_lengths)]
+    # 将所有batch的结果求平均
+    sim_2 = np.mean(sim_2)
+    # print(sim,sim_2)
+    return (sim + sim_2) / 2
+
+# src和comp可以都是list
+def sematic_simp(model, src, comp,vocab):
+    src_len = len(src)
+    comp_len = len(comp)
+
+    src = [vocab.tok2id.get(i,0) for i in src]
+    comp = [vocab.tok2id.get(i,0) for i in comp]
+
+    src = torch.tensor(src).to(device)
+    src = src.view(1,src.size(0))
+
+    comp = torch.tensor(comp).to(device)
+    comp = comp.view(1, comp.size(0))
+
+    enc_embs = model.inp_encoder.embed(src, vocab)
+    dec_embs = model.compressor.embed(comp, vocab)
+
+    # 先对source序列中的点进行遍历
+    sim = 0
+    for i in range(src_len):
+        batch_p = enc_embs[:, i, :]
+        batch_trj = dec_embs
+        tmp = r(batch_p, batch_trj)
+        sim += tmp[0]
+    # 计算的是所有batch的
+    sim = sim / src_len
+
+    # 接下来对trg_src做类似的处理
+    sim_2 = 0
+    for i in range(comp_len):
+        batch_p = dec_embs[:, i, :]
+        batch_trj = enc_embs
+        tmp = r(batch_p, batch_trj)
+        sim_2 += tmp[0]
+    # 计算的是所有batch的
+    sim_2 = sim_2 / comp_len
+    # print(sim,sim_2)
+    return (sim + sim_2) / 2
+
 
 def seq2str(seq):
     res = ""
@@ -62,13 +138,13 @@ def seq2str(seq):
     return res
 
 
-def compress_adp(src, points, max_ratio, key_dict, tlen=None, AError=None, score_adp=None, score_squish=None):
+def compress_adp(src, points, max_ratio, key_dict, tlen=None, AError=None, score_adp=None, score_squish=None,model=None, vocab=None):
     # 计时开始
     tic1 = time.perf_counter()
     err = []
     key = []
     compRes = []
-
+    sematical_loss = []
     if tlen is None:
         for idseq, seq in zip(src, points):
             _, idx, maxErr = adp(seq, int(max_ratio * len(seq)))
@@ -81,6 +157,9 @@ def compress_adp(src, points, max_ratio, key_dict, tlen=None, AError=None, score
         for idseq, seq, L, err_trj in zip(src, points, tlen, AError):
             # pp为压缩后的GPS点
             _, idx, maxErr = adp(seq, L)
+            comp = [idseq[i] for i in idx]
+            s_loss = sematic_simp(model,idseq,comp,vocab)
+            sematical_loss.append(s_loss)
             r_ = 0
             for id in idx:
                 r_ += key_dict.get(idseq[id], 0)
@@ -124,7 +203,7 @@ def compress_adp(src, points, max_ratio, key_dict, tlen=None, AError=None, score
 
     # 计时结束
     tic2 = time.perf_counter()
-    print(f"压缩率 {max_ratio},耗时 {tic2 - tic1},误差 {np.mean(err)},关键程度 {np.mean(key)}")
+    print(f"压缩率 {max_ratio},耗时 {tic2 - tic1},误差 {np.mean(err)},关键程度 {np.mean(key)},语义相似度 {np.mean(sematical_loss)}")
     return compRes, score_adp, score_squish
 
 
@@ -214,6 +293,7 @@ def load_dict_key(data_loader, model, vocab):
 def compress_seq3(data_loader, max_ratio, model, vocab, region, key_dict, score):
     results = []
     batch_eval_loss = []
+    batch_eval_semantic_loss = []
     # 平均每个点的重要程度
     key_info = []
     time_sum = 0
@@ -229,8 +309,8 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, key_dict, score)
             (inp_src, out_src, inp_trg, out_trg,
              src_lengths, trg_lengths) = batch
 
-            trg_lengths = torch.clamp(src_lengths * max_ratio, min=45, max=150)
-            trg_lengths = torch.floor(trg_lengths)
+            # trg_lengths = torch.clamp(src_lengths * max_ratio, min=9, max=30)
+            # trg_lengths = torch.floor(trg_lengths)
 
             m_zeros = torch.zeros(inp_src.size(0), vocab.size).to(inp_src)
             mask_matrix = m_zeros.scatter(1, inp_src, 1)
@@ -243,7 +323,8 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, key_dict, score)
             time_sum += tic2 - tic1
             enc1, dec1, enc2, dec2 = outputs
             loss, compTrj = get_sed_loss(vocab, region, inp_src, dec1)
-
+            semantic_loss = sematic_cal(model, inp_src, dec1, src_lengths, trg_lengths,vocab)
+            # print(semantic_loss)
             for trj, tlen, srcL, ll in zip(compTrj, trg_lengths, src_lengths, loss):
                 n = len(trj)
                 acc_tlen.append(n)
@@ -267,8 +348,9 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, key_dict, score)
                     score[ratio][2] += 1
 
             batch_eval_loss.append(np.mean(loss))
+            batch_eval_semantic_loss.append(semantic_loss)
 
-    print(f"压缩率 {max_ratio},耗时 {time_sum},误差 {np.mean(batch_eval_loss)},关键程度 {np.mean(key_info)},失真 {np.mean(delta)}")
+    print(f"压缩率 {max_ratio},耗时 {time_sum},误差 {np.mean(batch_eval_loss)},关键程度 {np.mean(key_info)},语义相似度 {np.mean(batch_eval_semantic_loss)},失真 {np.mean(delta)}")
     return acc_tlen, results, score
 
 
@@ -309,13 +391,13 @@ for x in score.items():
     num = x[1][2]
     print(rt, err_sum / num, key / num)
 
-# print()
-# points, src = readData(src_file, region)
-#
-# exp = []
-# for ratio, tlen, AError in zip(range_, src_tlen, all_error):
-#     res, score_adp, score_squish = compress_adp(src, points, ratio / 10, d, tlen, AError, score_adp, score_squish)
-#     exp.append(res)
+print()
+points, src = readData(src_file, region)
+
+exp = []
+for ratio, tlen, AError in zip(range_, src_tlen, all_error):
+    res, score_adp, score_squish = compress_adp(src, points, ratio / 10, d, tlen, AError, score_adp, score_squish,model, vocab)
+    exp.append(res)
 
 # for x in score_adp.items():
 #     rt = x[0]

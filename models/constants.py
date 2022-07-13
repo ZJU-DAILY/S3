@@ -7,3 +7,5 @@ PAD_WORD = '<blank>'
 BOS_WORD = '<s>'
 EOS_WORD = '</s>'
 UNK_WORD = '<unk>'
+
+zero_poi = 74671
