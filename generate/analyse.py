@@ -309,8 +309,8 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, key_dict, score)
             (inp_src, out_src, inp_trg, out_trg,
              src_lengths, trg_lengths) = batch
 
-            # trg_lengths = torch.clamp(src_lengths * max_ratio, min=9, max=30)
-            # trg_lengths = torch.floor(trg_lengths)
+            trg_lengths = torch.clamp(src_lengths * max_ratio, min=9, max=30)
+            trg_lengths = torch.floor(trg_lengths).int()
 
             m_zeros = torch.zeros(inp_src.size(0), vocab.size).to(inp_src)
             mask_matrix = m_zeros.scatter(1, inp_src, 1)

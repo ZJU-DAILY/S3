@@ -96,7 +96,6 @@ class Trainer(BaseTrainer):
 
             # back-propagate
             loss_sum.backward()
-
             if self.clip is not None:
                 # clip_grad_norm_(self.model.parameters(), self.clip)
                 for optimizer in self.optimizers:

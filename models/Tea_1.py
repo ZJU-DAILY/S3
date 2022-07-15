@@ -354,7 +354,7 @@ def outs_callback(batch, losses, loss_list, batch_outputs):
                 sample.append(_hyp)
                 sample.append(_pri)
             else:
-                _hyp = 'HYP', (hyp[i], [1 if p in src[i] else 0 for p in hyp[i]]), "255, 0, 0"
+                _hyp = 'HYP', hyp[i], "255, 0, 0"
                 sample.append(_hyp)
 
             if temps is not None:

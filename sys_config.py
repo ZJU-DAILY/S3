@@ -6,7 +6,7 @@ print("torch:", torch.__version__)
 # print("Cuda:", torch.backends.cudnn.cuda)
 # print("CuDNN:", torch.backends.cudnn.version())
 
-CPU_CORES = 4
+CPU_CORES = 10
 RANDOM_SEED = 1618
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -26,7 +26,7 @@ MODEL_DIRS = ["models", "modules", "utils"]
 
 VIS = {
     "server": "http://localhost",
-    "enabled": False,
+    "enabled": True,
     "port": 8097,
     "base_url": "/",
     "http_proxy_host": None,

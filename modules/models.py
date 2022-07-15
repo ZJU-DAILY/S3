@@ -152,6 +152,7 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
         self.compressor.embed.set_grad_mask(mask)
         self.decompressor.embed.set_grad_mask(mask)
 
+    # 这个函数的目的是构造一个伪真值。因为压缩轨迹没有真值存在，或者说有真值但是没有标注数据存在，那么我可以伪造一个真值，比如压缩轨迹必须满足的几个特点，起点和终点一致。
     def _fake_inputs(self, inputs, latent_lengths, src_lengths, pad=1):
         batch_size, seq_len = inputs.size()
 
@@ -166,7 +167,7 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
         fakes[:, 0] = self.sos
         fakes[:, 1] = inputs[:, 0]
         for i, len_ in enumerate(src_lengths):
-            fakes[i, 2] = inputs[i, len_.item() - 1]
+            fakes[i, latent_lengths[i].item() - 1] = inputs[i, len_.item() - 1]
         return fakes
 
     def generate(self, inputs, src_lengths, trg_seq_len, mask_matrix=None, inp_src=None, vocab=None, region=None):

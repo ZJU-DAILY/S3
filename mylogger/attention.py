@@ -33,6 +33,7 @@ def viz_summary(seqs):
     txt = ""
     src_seq = []
     hit = []
+    hyp_seq = []
     for name, data, color in seqs:
         if isinstance(data, tuple):
             _text = viz_sequence(data[0], data[1], color=color)
@@ -41,7 +42,7 @@ def viz_summary(seqs):
             if name == "SRC":
                 src_seq = data[0]
             elif name == "HYP":
-                hit = data[1]
+                hyp_seq = data[0]
         else:
             _text = viz_sequence(data)
             length = len(data)
@@ -49,8 +50,9 @@ def viz_summary(seqs):
             if name == "SRC":
                 src_seq = data
             elif name == "HYP":
-                hit = [1 if p in src_seq else 0 for p in data]
+                hyp_seq = data
 
+        hit = [1 if p in src_seq else 0 for p in hyp_seq]
         txt += f"<div class='sentence'>{name}({length}/{non_length}/{'' if name != 'HYP' else np.sum(hit)}): {_text}</div>"
 
     return f"<div class='sample'>{txt}</div>"

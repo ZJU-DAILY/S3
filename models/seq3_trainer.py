@@ -236,6 +236,7 @@ class Seq3Trainer(Trainer):
                                         len_min_rt, len_max_rt,
                                         len_min, len_max)
 
+        mask_matrix = None
         if self.mask:
             if self.mask_fn == "area":
                 # Schema 1 for mask: A area
@@ -253,8 +254,7 @@ class Seq3Trainer(Trainer):
                 m_zeros = torch.zeros(inp_x.size(0), vocab.size).to(inp_x)
                 mask_matrix = m_zeros.scatter(1, inp_x, 1)
                 mask_matrix[:, 0] = 0
-        else:
-            mask_matrix = None
+
 
         outputs = self.model(inp_x, inp_xhat,
                              x_lengths, latent_lengths, sampling, tau, mask_matrix, region=region, vocab=vocab)
@@ -394,6 +394,7 @@ class Seq3Trainer(Trainer):
 
                 # 两个metric之间设置一个权重，让他们数量级更加相似
                 lamda = 0.1
+                print("sed loss: ",loss_sed,"semantic loss: ",loss_semantic)
                 loss_sum = loss_sed + lamda * loss_semantic  # + loss_sum + sum(losses).item()
         return loss_sum
 

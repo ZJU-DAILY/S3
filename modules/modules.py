@@ -468,6 +468,9 @@ class AttSeqDecoder(nn.Module):
                                           nn.Softplus())
             self.tau_0 = kwargs.get("tau_0", 1)
 
+        # 此处我还是想将隐形量最终映射为tmp_size大小的，也就是word2vec。目的也仅仅是能够兼容tie_weights
+        tmp_size = kwargs.get("emb_size", 100)
+
         # initial input feeding
         if self.input_feeding_learnt:
             self.Wi = nn.Linear(enc_size, self.ho_size)
@@ -475,13 +478,18 @@ class AttSeqDecoder(nn.Module):
         # source context-aware output projection
         self.Wc = nn.Linear(rnn_size + enc_size, self.ho_size)
 
+        # self.Wc = nn.Linear(rnn_size + enc_size, tmp_size)
+
         # projection layer to the vocabulary
-        self.Wo = nn.Linear(self.ho_size, trg_ntokens)
+        # self.Wo = nn.Linear(self.ho_size, trg_ntokens)
+        self.Wo = nn.Linear(tmp_size, trg_ntokens)
 
         if self.layer_norm:
+            # self.norm_ctx = nn.LayerNorm(tmp_size)
             self.norm_ctx = nn.LayerNorm(self.ho_size)
 
             if self.input_feeding_learnt:
+                # self.norm_input_feed = nn.LayerNorm(tmp_size)
                 self.norm_input_feed = nn.LayerNorm(self.ho_size)
 
         if tie_weights:
@@ -547,6 +555,7 @@ class AttSeqDecoder(nn.Module):
         """
         # in sample is `True`, then feed the prediction back to the model,
         # instead of the true target word
+        use_init_hidden = True
         sample = sampling_prob == 1 or self._coin_flip(sampling_prob)
 
         if step > 0 and sample:
@@ -557,11 +566,11 @@ class AttSeqDecoder(nn.Module):
                 return e_i, None
 
             else:  # get the expected embedding, parameterized by the posterior
-                if step == 1 or step == 2:
+                if not use_init_hidden and (step == 1 or step == 2):
                     batch_size = logits[-1].size(0)
                     class_num = logits[-1].size(2)
                     label = trg[:, step].unsqueeze(1)
-                    m_zeros = torch.zeros(batch_size, class_num, device=logits[-1].device)
+                    m_zeros = torch.zeros(batch_size, class_num, device=logits.device)
                     dist = m_zeros.scatter(1, label, 1)
                 elif self.gumbel and self.training:
                     if mask_matrix is not None and self._coin_flip(sampling_prob):
@@ -640,7 +649,7 @@ class AttSeqDecoder(nn.Module):
 
         # 1. Construct the input
         decoder_input = embs
-        # 默认是false
+        # 默认是true
         if self.input_feeding:
             if ho is None:
                 ho = self._init_input_feed(enc_outputs, enc_lengths)
@@ -670,10 +679,15 @@ class AttSeqDecoder(nn.Module):
             ho = torch.relu(ho)
         elif self.out_non_linearity == "tanh":
             ho = torch.tanh(ho)
+        # 5. cut the ho vector for top tmp_size if gnn_used
 
-        # 5. Project the context-aware vector to the vocabulary.gumbel_softmax
+        if self.gnn_used:
+            input_size = self.Wo.in_features
+            dec_logits = self.Wo(ho[:,:,:input_size])
+        # 6. Project the context-aware vector to the vocabulary.gumbel_softmax
         # print(ho.shape,self.Wo)
-        dec_logits = self.Wo(ho)
+        else:
+            dec_logits = self.Wo(ho)
 
         return dec_logits, outputs, state, ho, att_scores
 
@@ -761,8 +775,8 @@ class AttSeqDecoder(nn.Module):
                     attn_coverage = torch.zeros([enc_outputs.size(0), enc_outputs.size(1)]).to(e_i)
                 else:
                     attn_coverage = torch.stack(attentions).sum(0)
-            if i == 2:
-                state = init_hidden
+            # if i == 2:
+            #     state = init_hidden
 
             # perform one decoding step
             # logits就是输出对应词表中的词，output就是当前输出的隐向量，state就是最后一个状态的隐向量。

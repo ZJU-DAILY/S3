@@ -4,7 +4,7 @@ eval_interval: 100        # 100 how often (batches) to evaluate the model on the
 log_interval: 50          # how often (batches) to log the training process to console
 batch_size: 20           # size of a batch-128
 #batch_size: 20
-epochs: 5                # number of epochs.default-5
+epochs: 20                # number of epochs.default-5
 num_workers: 0
 
 plot_norms: False  # Plot the gradient norms of each loss wrt to the compressor
@@ -105,7 +105,7 @@ model:
   ################################################
   # INIT DECODER
   ################################################
-  length_control: False          # If true, use the countdown parameter for the decoders,
+  length_control: True          # If true, use the countdown parameter for the decoders,
                                 # as well as the target length-aware initialization for each decoder
   err_control: False
   bridge_hidden: True           # use a bridge layer (hidden) between the last layer of the encoder and the initial state of the decoder
@@ -138,7 +138,7 @@ model:
   hard: False        # Use Straight-Through, i.e., discretize the output distributions in the forwards pass
   gumbel: False      # Use Gumbel-Softmax instead of softmax in the latent sequence-true
   tau: 0.5          # Temperature of the distributions in the latent sequence
-  learn_tau: False  # 为消除重复token做出了主要贡献。Learn the value of the temperature, as function of the output of the decoder(s)
+  learn_tau: True  # 为消除重复token做出了主要贡献。Learn the value of the temperature, as function of the output of the decoder(s)
   tau_0: 0.5        # Hyper-parameter that controls the upper-bound of the temperature.
-  mask: False
+  mask: True
   mask_fn: trj      #option: area or trj.
