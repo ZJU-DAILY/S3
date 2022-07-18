@@ -167,7 +167,8 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
         fakes[:, 0] = self.sos
         fakes[:, 1] = inputs[:, 0]
         for i, len_ in enumerate(src_lengths):
-            fakes[i, latent_lengths[i].item() - 1] = inputs[i, len_.item() - 1]
+            # fakes[i, latent_lengths[i].item() - 1] = inputs[i, len_.item() - 1]
+            fakes[i, 2] = inputs[i, len_.item() - 1]
         return fakes
 
     def generate(self, inputs, src_lengths, trg_seq_len, mask_matrix=None, inp_src=None, vocab=None, region=None):

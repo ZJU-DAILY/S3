@@ -34,7 +34,7 @@ class Seq3Trainer(Trainer):
         return list(sorted([(n, p.grad) for n, p in
                             self.model.named_parameters() if p.requires_grad]))
 
-    def _debug_grad_norms(self, reconstruct_loss, local_topic_loss, topic_loss):
+    def _debug_grad_norms(self, reconstruct_loss, local_topic_loss, topic_loss, neo_loss):
         c_grad_norm = []
         c_grad_norm.append(
             module_grad_wrt_loss(self.optimizers, self.model.compressor,
@@ -51,6 +51,12 @@ class Seq3Trainer(Trainer):
             c_grad_norm.append(
                 module_grad_wrt_loss(self.optimizers, self.model.compressor,
                                      local_topic_loss,
+                                     "rnn"))
+
+        if self.config["model"]["neo_loss"]:
+            c_grad_norm.append(
+                module_grad_wrt_loss(self.optimizers, self.model.compressor,
+                                     neo_loss,
                                      "rnn"))
         return c_grad_norm
 
@@ -309,11 +315,23 @@ class Seq3Trainer(Trainer):
         # 4 - LENGTH
         # --------------------------------------------------------------
         if self.config["model"]["length_loss"]:
-            _vocab = self._get_vocab()
-            eos_id = _vocab.tok2id[_vocab.EOS]
+            eos_id = vocab.tok2id[vocab.EOS]
             length_loss = kl_length(dec1[0], latent_lengths, eos_id)
             losses.append(length_loss)
 
+        if self.config["model"]["neo_loss"]:
+            comp = dec1[3].max(-1)[1]
+            m_zeros_x = torch.zeros(inp_x.size(0), inp_x.size(1), vocab.size).to(inp_x)
+            m_zeros_y = torch.zeros(comp.size(0), comp.size(1), vocab.size).to(inp_x)
+            X = m_zeros_x.scatter(2, inp_x.unsqueeze(2), 1)
+            Y = m_zeros_y.scatter(2, comp.unsqueeze(2), 1)
+            cross_matrix = torch.bmm(X.float(),Y.transpose(1,2).float())
+            tmp = cross_matrix.sum(-1)
+            zaoshengdian = torch.where(tmp > 1,1,0).sum()
+            # neo = tmp.sum() - zaoshengdian
+            neo = tmp.sum() / latent_lengths.float().sum()
+            # print(neo,zaoshengdian)
+            losses.append(neo)
         # --------------------------------------------------------------
         # Plot Norms of loss gradient wrt to the compressor
         # --------------------------------------------------------------
@@ -322,7 +340,8 @@ class Seq3Trainer(Trainer):
             batch_outputs["grad_norm"] = self._debug_grad_norms(
                 mean_rec_loss,
                 local_topic_loss,
-                topic_loss)
+                topic_loss,
+                neo)
 
         return losses, batch_outputs
 
@@ -384,7 +403,8 @@ class Seq3Trainer(Trainer):
                 # --------------------------------------------------------------
                 # 1 - SED metric
                 # --------------------------------------------------------------
-                loss_sed = self._sed_loss(inp_src, dec)
+                # loss_sed = self._sed_loss(inp_src, dec)
+                loss_sed = 0
 
 
                 # --------------------------------------------------------------
@@ -394,7 +414,7 @@ class Seq3Trainer(Trainer):
 
                 # 两个metric之间设置一个权重，让他们数量级更加相似
                 lamda = 0.1
-                print("sed loss: ",loss_sed,"semantic loss: ",loss_semantic)
+                # print("sed loss: ",loss_sed,"semantic loss: ",loss_semantic)
                 loss_sum = loss_sed + lamda * loss_semantic  # + loss_sum + sum(losses).item()
         return loss_sum
 

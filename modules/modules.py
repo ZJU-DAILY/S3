@@ -526,7 +526,7 @@ class AttSeqDecoder(nn.Module):
         """
         return prob > 0 and torch.rand(1).item() < prob
 
-    def get_embedding(self, step, trg, logits, sampling_prob, argmax, hard,
+    def get_embedding(self, step, trg, logits, dists, sampling_prob, argmax, hard,
                       tau, mask_matrix, vocab):
         """
         Get the token embedding for the current timestep. Possible options:
@@ -555,7 +555,7 @@ class AttSeqDecoder(nn.Module):
         """
         # in sample is `True`, then feed the prediction back to the model,
         # instead of the true target word
-        use_init_hidden = True
+        use_init_hidden = False
         sample = sampling_prob == 1 or self._coin_flip(sampling_prob)
 
         if step > 0 and sample:
@@ -570,7 +570,7 @@ class AttSeqDecoder(nn.Module):
                     batch_size = logits[-1].size(0)
                     class_num = logits[-1].size(2)
                     label = trg[:, step].unsqueeze(1)
-                    m_zeros = torch.zeros(batch_size, class_num, device=logits.device)
+                    m_zeros = torch.zeros(batch_size, class_num, device=logits[-1].device)
                     dist = m_zeros.scatter(1, label, 1)
                 elif self.gumbel and self.training:
                     if mask_matrix is not None and self._coin_flip(sampling_prob):
@@ -578,7 +578,8 @@ class AttSeqDecoder(nn.Module):
                     else:
                         dist = gumbel_softmax(logits[-1].squeeze(), tau, hard)
                 else:
-                    if mask_matrix is not None and self._coin_flip(sampling_prob):
+                    if mask_matrix is not None:
+                    # if mask_matrix is not None and self._coin_flip(sampling_prob):
                         # mask_vector = mask_matrix
                         # logit = logits[-1].squeeze()
                         # mask_logit = mask_vector * logit
@@ -743,8 +744,11 @@ class AttSeqDecoder(nn.Module):
 
         for i in range(max_length):
             # obtain the input word embedding，返回的词向量和对应词id（即经过softmax之后转化为one-hot的词）
-            e_i, d_i = self.get_embedding(i, gold_tokens, logits,
+            e_i, d_i = self.get_embedding(i, gold_tokens, logits,dists,
                                           sampling_prob, argmax, hard, tau, mask_matrix, vocab)
+            if d_i is not None:
+                tmp = d_i.max(-1)[1].unsqueeze(1)
+                mask_matrix = mask_matrix.scatter(1, tmp, 0)
 
             if word_dropout > 0 and i > 0:
                 e_i, mask = drop_tokens(e_i, word_dropout)
@@ -775,8 +779,8 @@ class AttSeqDecoder(nn.Module):
                     attn_coverage = torch.zeros([enc_outputs.size(0), enc_outputs.size(1)]).to(e_i)
                 else:
                     attn_coverage = torch.stack(attentions).sum(0)
-            # if i == 2:
-            #     state = init_hidden
+            if i == 2:
+                state = init_hidden
 
             # perform one decoding step
             # logits就是输出对应词表中的词，output就是当前输出的隐向量，state就是最后一个状态的隐向量。

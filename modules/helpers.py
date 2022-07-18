@@ -152,7 +152,7 @@ def module_grad_wrt_loss(optimizers, module, loss, prefix=None):
     loss.backward(retain_graph=True)
 
     grad_norms = [(n, p.grad.norm().item())
-                  for n, p in module.named_parameters()]
+                  for n, p in module.named_parameters() if p.requires_grad]
 
     if prefix is not None:
         grad_norms = [g for g in grad_norms if g[0].startswith(prefix)]

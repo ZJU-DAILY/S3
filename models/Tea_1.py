@@ -234,6 +234,8 @@ if config["model"]["topic_loss"]:
     step_tags.append("TOPIC")
 if config["model"]["length_loss"]:
     step_tags.append("LENGTH")
+if config["model"]["neo_loss"]:
+    step_tags.append("NEO")
 
 exp.add_metric("loss", "line", tags=step_tags)
 exp.add_metric("ppl", "line", title="perplexity", tags=step_tags)
@@ -242,7 +244,7 @@ exp.add_metric("eval_loss", "line")
 exp.add_value("grads", "text", title="gradients")
 
 exp.add_metric("c_norm", "line", title="Compressor Grad Norms",
-               tags=step_tags[:len(set(step_tags) & {"LOCAL_TOPIC", "TOPIC"}) + 1])
+               tags=step_tags[:len(set(step_tags) & {"LOCAL_TOPIC", "TOPIC", "NEO"}) + 1])
 exp.add_value("progress", "text", title="training progress")
 exp.add_value("epoch", "text", title="epoch summary")
 exp.add_value("samples", "text", title="Samples")
@@ -307,6 +309,9 @@ def outs_callback(batch, losses, loss_list, batch_outputs):
 
             if "LOCAL_TOPIC" in step_tags:
                 exp.update_metric("c_norm", norms[loss_ids["local_topic"]], "LOCAL_TOPIC")
+
+            if "NEO" in step_tags:
+                exp.update_metric("c_norm", norms[loss_ids["neo"]], "NEO")
 
         if len(batch) == 2:
             inp = batch[0][0]
@@ -416,6 +421,9 @@ if config["model"]["topic_loss"]:
 if config["model"]["length_loss"]:
     loss_weights.append(config["model"]["loss_weight_length"])
     loss_ids["length"] = len(loss_weights) - 1
+if config["model"]["neo_loss"]:
+    loss_weights.append(config["model"]["loss_weight_neo"])
+    loss_ids["neo"] = len(loss_weights) - 1
 
 trainer = Seq3Trainer(model, train_loader, val_loader,
                       criterion, optimizer, config, opts.device,
