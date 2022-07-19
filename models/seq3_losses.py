@@ -112,7 +112,7 @@ def r(p, trj):
             min_l = l
         else:
             # 将batch中的每一个更新，取最大值
-            min_l = torch.min(min_l, l)
+            min_l = torch.max(min_l, l)
     return min_l.tolist()
 
 def sed_loss(region, src, trg):

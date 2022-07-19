@@ -150,6 +150,7 @@ def makeVocab(region, trjfile):
         data[i, :] = [x, y]
         i += 1
     region.hotcell_kdtree = KDTree(data)
+    print(f"vocab size: {data.shape}")
     # length = len(xs)
     # xs = np.array([xs])
     # ys = np.array(ys)
@@ -263,13 +264,13 @@ class SpacialRegion:
 def createVocab_save(path):
     # 构建词表以及kdtree
     # 北京的配置信息
-    # region = SpacialRegion(minlon=115.7001, minlat=39.4, maxlon=117.39994,
-    #                        maxlat=41.59471, xstep=100.0, ystep=100.0, minfreq=100,
-    #                        maxvocab_size=15000, k=10, vocab_start=4)
+    region = SpacialRegion(minlon=115.7001, minlat=39.4, maxlon=117.39994,
+                           maxlat=41.59471, xstep=350.0, ystep=350.0, minfreq=100,
+                           maxvocab_size=8000, k=10, vocab_start=4)
     # porto的配置信息
-    region = SpacialRegion(minlon=-8.735152, minlat=40.953673, maxlon=-8.156309,
-                           maxlat=41.307945, xstep=100.0, ystep=100.0, minfreq=100,
-                           maxvocab_size=40000, k=10, vocab_start=4)
+    # region = SpacialRegion(minlon=-8.735152, minlat=40.953673, maxlon=-8.156309,
+    #                        maxlat=41.307945, xstep=100.0, ystep=100.0, minfreq=100,
+    #                        maxvocab_size=40000, k=10, vocab_start=4)
     makeVocab(region, path)
 
     var_b = pickle.dumps(region)

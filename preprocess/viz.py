@@ -196,6 +196,7 @@ def plotTest(region):
         for p in trj:
             if p != '':
                 x_, y_ = cell2gps(region, int(p))
+
                 x.append(x_), y.append(y_)
     plt.scatter(x, y, color='r')
 

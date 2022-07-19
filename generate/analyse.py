@@ -357,7 +357,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, key_dict, score)
 # main
 # path = os.path.join(BASE_DIR, "checkpoints/best_model")
 path = None
-checkpoint = "seq3.full_-prior"
+checkpoint = "seq3.full_-valid"
 seed = 1
 device = "cuda"
 verbose = True
