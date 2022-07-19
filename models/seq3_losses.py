@@ -101,19 +101,22 @@ def pairwise_loss(a, b, dist="cosine"):
 
 def r(p, trj):
     batch = p.size(0)
-    min_l = None
+    max_l = None
     max_len = trj.size(1)
     for i in range(max_len):
         p2 = trj[:, i, :]
         # 由于pairwise_loss对每个batch做了平均，所以返回的就是一个值
 
         l = pairwise_loss(p, p2, "cosine_max")
-        if min_l == None:
-            min_l = l
+        # l中的值为1，说明两个向量恰好呈180，或者其中某个向量为0向量。后者发送的概率远大于前者，所以我们直接将1的值抹掉
+        l[torch.where(l == 1)] = 0
+        l[torch.where(l == 1.0000e-06)] = 0
+        if max_l == None:
+            max_l = l
         else:
             # 将batch中的每一个更新，取最大值
-            min_l = torch.max(min_l, l)
-    return min_l.tolist()
+            max_l = torch.max(max_l, l)
+    return max_l.tolist()
 
 def sed_loss(region, src, trg):
     if len(src) == len(trg):

@@ -182,13 +182,13 @@ def compress_adp(src, points, max_ratio, key_dict, tlen=None, AError=None, score
                 score_adp[ratio][1] += r_ / len(idx)
                 score_adp[ratio][2] += 1
             # squish部分
-            if ratio not in score_squish:
-                # 当前压缩率下对应的：loss、关键点程度、个数
-                score_squish[ratio] = [maxErr_squish, r_squish / len(idx), 1]
-            else:
-                score_squish[ratio][0] += maxErr_squish
-                score_squish[ratio][1] += r_squish / len(idx)
-                score_squish[ratio][2] += 1
+            # if ratio not in score_squish:
+            #     # 当前压缩率下对应的：loss、关键点程度、个数
+            #     score_squish[ratio] = [maxErr_squish, r_squish / len(idx), 1]
+            # else:
+            #     score_squish[ratio][0] += maxErr_squish
+            #     score_squish[ratio][1] += r_squish / len(idx)
+            #     score_squish[ratio][2] += 1
 
             # 写压缩轨迹部分
             a_err = err_trj[0]
@@ -357,7 +357,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, key_dict, score)
 # main
 # path = os.path.join(BASE_DIR, "checkpoints/best_model")
 path = None
-checkpoint = "seq3.full_-valid"
+checkpoint = "seq3.full_-prior"
 seed = 1
 device = "cuda"
 verbose = True
@@ -366,7 +366,7 @@ torch.manual_seed(seed)
 if torch.cuda.is_available():
     torch.cuda.manual_seed(seed)
 
-src_file = os.path.join(DATA_DIR, "eval.src")
+src_file = os.path.join(DATA_DIR, "infer.src")
 with open('../preprocess/pickle.txt', 'rb') as f:
     var_a = pickle.load(f)
 region = pickle.loads(var_a)

@@ -1,5 +1,5 @@
 checkpoint_interval: 5000 # how often (batches) to save a checkpoint
-eval_interval: 100        # 100 how often (batches) to evaluate the model on the dev set. Note: eval_interval need to be smaller than train_data_size / batch_size (batch number in one epoch)
+eval_interval: 500        # 100 how often (batches) to evaluate the model on the dev set. Note: eval_interval need to be smaller than train_data_size / batch_size (batch number in one epoch)
 #eval_interval: 10
 log_interval: 50          # how often (batches) to log the training process to console
 batch_size: 20           # size of a batch-128
@@ -69,10 +69,10 @@ model:
   #------------------------------------
   # Topic
   #------------------------------------
-  topic_loss: False                # enable/disable the prior loss
+  topic_loss: True                # enable/disable the prior loss
   loss_weight_topic: 1            # weight of the prior loss - λ_T
   topic_idf: True                 # weight the input embeddings by their IDF
-  topic_distance: euclidean          # distance metric for topic loss. Options: cosine, euclidean
+  topic_distance: cosine          # distance metric for topic loss. Options: cosine, euclidean
 
   #------------------------------------
   # Length
@@ -80,6 +80,11 @@ model:
   length_loss: False               # enable/disable the length loss
   loss_weight_length: 0.01        # weight of the prior loss - λ_L
 
+  #------------------------------------
+  # neo: Penalty for noise and repetitive token problem
+  #------------------------------------
+  neo_loss: False               # enable/disable the length loss
+  loss_weight_neo: 10        # weight of the prior loss - λ_L
 
   ################################################
   # SUMMARY LENGTHS

@@ -224,6 +224,41 @@ class Seq3Trainer(Trainer):
         # print(sim,sim_2)
         return (sim + sim_2) / 2
 
+    def _sematic_simp(self, src, comp, vocab):
+        src_len = src.size(0)
+        comp_len = comp.size(0)
+        # src = [vocab.tok2id.get(i, 0) for i in src]
+        # comp = [vocab.tok2id.get(i, 0) for i in comp]
+
+        # src = torch.tensor(src).to(device)
+        src = src.view(1, src.size(0))
+        comp = comp.view(1, comp.size(0))
+
+        enc_embs = self.model.inp_encoder.embed(src, vocab)
+        dec_embs = self.model.compressor.embed(comp, vocab)
+
+        # 先对source序列中的点进行遍历
+        sim = 0
+        for i in range(src_len):
+            batch_p = enc_embs[:, i, :]
+            batch_trj = dec_embs
+            tmp = r(batch_p, batch_trj)
+            sim += tmp[0]
+        # 计算的是所有batch的
+        sim = sim / src_len
+
+        # 接下来对trg_src做类似的处理
+        sim_2 = 0
+        for i in range(comp_len):
+            batch_p = dec_embs[:, i, :]
+            batch_trj = enc_embs
+            tmp = r(batch_p, batch_trj)
+            sim_2 += tmp[0]
+        # 计算的是所有batch的
+        sim_2 = sim_2 / comp_len
+        # print(sim,sim_2)
+        return (sim + sim_2) / 2
+
     def _process_batch(self, inp_x, out_x, inp_xhat, out_xhat,
                        x_lengths, xhat_lengths):
 
@@ -411,7 +446,11 @@ class Seq3Trainer(Trainer):
                 # 2 - Semantic metric
                 # --------------------------------------------------------------
                 loss_semantic = self._sematic_loss(inp_src, dec, src_lengths, latent_lengths,vocab)
-
+                # s_loss_ = 0
+                # for _src, _src_len, comp in zip(inp_src, src_lengths, dec[3].max(-1)[1]):
+                #     _src = _src[:_src_len]
+                #     s_loss_ += self._sematic_simp(_src, comp, vocab)
+                # loss_semantic = s_loss_ / inp_src.size(0)
                 # 两个metric之间设置一个权重，让他们数量级更加相似
                 lamda = 0.1
                 # print("sed loss: ",loss_sed,"semantic loss: ",loss_semantic)

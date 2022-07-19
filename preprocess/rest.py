@@ -15,7 +15,7 @@ import math
 import pickle
 
 def plotTest(region):
-    with open("../datasets/val.src", "r") as f:
+    with open("../datasets/eval.src", "r") as f:
         ss = f.readlines()
     x = []
     y = []
@@ -36,7 +36,7 @@ def plotTest(region):
     print(len(ss))
     plt.scatter(x, y, color='r')
     plt.grid(True)
-    plt.savefig('test_val.png')
+    plt.savefig('test_eval.png')
     plt.close()
 
 with open('pickle.txt', 'rb') as f:
