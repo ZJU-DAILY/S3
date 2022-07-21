@@ -7,7 +7,7 @@ from preprocess.SpatialRegionTools import str2trip
 import numpy as np
 from sklearn.neighbors import KDTree
 import matplotlib as mpl
-from modules.helpers import getSED, getCompress
+from modules.helpers import getDistance, getCompress
 
 mpl.use('Agg')
 from matplotlib import pyplot as plt
@@ -49,7 +49,7 @@ def SEDsimilarity(region, src, trg):
                     f += 1
                     continue
                 in_ = src[f]
-                dis = getSED(region, int(in_), int(st), int(en))
+                dis = getDistance(region, int(in_), int(st), int(en))
                 if dis > maxSED:
                     maxSED = dis
                     idx = f

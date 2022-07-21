@@ -7,7 +7,7 @@ from preprocess.SpatialRegionTools import str2trip
 import numpy as np
 from sklearn.neighbors import KDTree
 import matplotlib as mpl
-from modules.helpers import getSED, getCompress
+from modules.helpers import getDistance, getCompress
 
 mpl.use('Agg')
 from matplotlib import pyplot as plt

@@ -1,9 +1,11 @@
+import time
+
 import torch
 from torch import nn
 from torch.nn import functional as F
 from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
 
-from modules.helpers import straight_softmax, gumbel_softmax, getErr, getSED
+from modules.helpers import straight_softmax, gumbel_softmax, getErr, getDistance
 from modules.layers import Embed, Attention
 from utils.gcn_emb import gcn_emb
 
@@ -555,7 +557,7 @@ class AttSeqDecoder(nn.Module):
         """
         # in sample is `True`, then feed the prediction back to the model,
         # instead of the true target word
-        use_init_hidden = False
+        use_init_hidden = True
         sample = sampling_prob == 1 or self._coin_flip(sampling_prob)
 
         if step > 0 and sample:
@@ -695,7 +697,7 @@ class AttSeqDecoder(nn.Module):
     def forward(self, gold_tokens, enc_outputs, init_hidden, enc_lengths,
                 sampling_prob=0.0, argmax=False, hard=False, tau=1.0,
                 desired_lengths=None, word_dropout=0, mask_matrix=None, inp_src=None,
-                region=None, vocab=None):
+                region=None, vocab=None,time_list=None):
         """
 
         Args:
@@ -757,36 +759,41 @@ class AttSeqDecoder(nn.Module):
             if self.length_control:
                 tick = torch.stack([countdown[:, i], ratio], -1).unsqueeze(1)
 
-            if self.err_control:
-                if d_i is not None:
-                    curP = d_i.max(-1)[-1]
-                    id = [(seq == p).nonzero().flatten().tolist() if p in seq and p != 0 else [-1] for p, seq in
-                          zip(curP, inp_src)]
-
-                    for x, ii in enumerate(id):
-                        idx[x].append(ii[0])
-
-                if i <= 2:
-                    ec = torch.ones([batch, 1, 1]).to(e_i)
-                else:
-                    err = getErr(region, vocab, inp_src, idx, i)
-                    ec = torch.tensor(err).to(e_i)
-                    ec = ec.view(batch, 1, 1)
-                    ec = ec * self.W_err
+            # if self.err_control:
+            #     if d_i is not None:
+            #         curP = d_i.max(-1)[-1]
+            #         id = [(seq == p).nonzero().flatten().tolist() if p in seq and p != 0 else [-1] for p, seq in
+            #               zip(curP, inp_src)]
+            #
+            #         for x, ii in enumerate(id):
+            #             idx[x].append(ii[0])
+            #
+            #     if i <= 2:
+            #         ec = torch.ones([batch, 1, 1]).to(e_i)
+            #     else:
+            #         err = getErr(region, vocab, inp_src, idx, i)
+            #         ec = torch.tensor(err).to(e_i)
+            #         ec = ec.view(batch, 1, 1)
+            #         ec = ec * self.W_err
 
             if self.coverage:
                 if len(attentions) == 0:
                     attn_coverage = torch.zeros([enc_outputs.size(0), enc_outputs.size(1)]).to(e_i)
                 else:
                     attn_coverage = torch.stack(attentions).sum(0)
-            if i == 2:
-                state = init_hidden
+            # if i == 2:
+            #     state = init_hidden
 
             # perform one decoding step
             # logits就是输出对应词表中的词，output就是当前输出的隐向量，state就是最后一个状态的隐向量。
             # 因为此处的rnn层数只有一层，所以output和state理论上来说应该是一样的。ho和att是和attention相关的一些参数，可暂时不考虑。
+            tic1 = time.perf_counter()
             _logits, outs, state, ho, att = self.step(e_i, enc_outputs, state,
                                                       enc_lengths, ho, tick, ec, attn_coverage)
+            tic2 = time.perf_counter()
+
+            if time_list is not None:
+                time_list[0] += tic2 - tic1
 
             if self.learn_tau and self.training:
                 tau = 1 / (self.softplus(ho.squeeze()) + self.tau_0)

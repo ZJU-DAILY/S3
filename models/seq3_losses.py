@@ -1,6 +1,6 @@
 import torch
 from torch.nn import functional as F
-from modules.helpers import sequence_mask, getSED, adp, id2gps
+from modules.helpers import sequence_mask, getDistance, adp, id2gps
 
 import numpy as np
 
@@ -108,9 +108,10 @@ def r(p, trj):
         # 由于pairwise_loss对每个batch做了平均，所以返回的就是一个值
 
         l = pairwise_loss(p, p2, "cosine_max")
-        # l中的值为1，说明两个向量恰好呈180，或者其中某个向量为0向量。后者发送的概率远大于前者，所以我们直接将1的值抹掉
+        # l中的值为1，说明两个向量恰好呈90，或者其中某个向量为0向量。后者发生的概率远大于前者，所以我们直接将1的值抹掉
         l[torch.where(l == 1)] = 0
         l[torch.where(l == 1.0000e-06)] = 0
+        # assert torch.all(l != 1)
         if max_l == None:
             max_l = l
         else:
@@ -118,7 +119,7 @@ def r(p, trj):
             max_l = torch.max(max_l, l)
     return max_l.tolist()
 
-def sed_loss(region, src, trg):
+def sed_loss(region, src, trg, mode):
     if len(src) == len(trg):
         print("the length of src is same with trg.")
     # p为慢指针（指向trg），f为快指针（指向src）。src的长度应该大于等于trg
@@ -140,7 +141,7 @@ def sed_loss(region, src, trg):
                     f += 1
                     continue
                 in_ = src[f]
-                dis = getSED(region, int(in_), int(st), int(en))
+                dis = getDistance(region, int(in_), int(st), int(en), mode)
                 maxSED = max(maxSED, dis)
                 f += 1
     if maxSED == -1:
@@ -160,13 +161,13 @@ def energy_(region, inp, size_1):
             if trj[i + 1] == '':
                 break
             en = int(trj[i + 1])
-            pri = getSED(region, p, st, en)
+            pri = getDistance(region, p, st, en)
             # window取到2
             st = int(trj[i - 2 if i - 2 > 0 else 0])
             if trj[i + 1 if i + 1 < len(trj) - 1 else len(trj) - 1] == '':
                 break
             en = int(trj[i + 1 if i + 1 < len(trj) - 1 else len(trj) - 1])
-            pri2 = getSED(region, p, st, en)
+            pri2 = getDistance(region, p, st, en)
 
             ener[i] = (pri + pri2) / 2
         enc1_energies.append(ener)

@@ -148,7 +148,7 @@ class Embed(nn.Module):
         This is the heart of the model. This function, defines how the data
         passes through the network.
         Args:
-            x (): the input data (the sentences)
+            x (): vid, the input data (the sentences)
 
         Returns: the logits for each class
 

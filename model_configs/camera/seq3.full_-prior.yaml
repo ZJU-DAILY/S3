@@ -4,7 +4,7 @@ eval_interval: 500        # 100 how often (batches) to evaluate the model on the
 log_interval: 50          # how often (batches) to log the training process to console
 batch_size: 20           # size of a batch-128
 #batch_size: 20
-epochs: 1                # number of epochs.default-5
+epochs: 3                # number of epochs.default-5
 num_workers: 0
 
 plot_norms: False  # Plot the gradient norms of each loss wrt to the compressor

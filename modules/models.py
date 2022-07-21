@@ -1,3 +1,5 @@
+import time
+
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -195,7 +197,7 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
     # latent_length就是论文中的M
     def forward(self, inp_src, inp_trg,
                 src_lengths, latent_lengths,
-                sampling, tau=1, mask_matrix=None, hard=True, region=None, vocab=None):
+                sampling, tau=1, mask_matrix=None, hard=True, region=None, vocab=None,decoder_time_list=None):
 
         """
         This approach utilizes 4 RNNs. The latent representation is obtained
@@ -231,12 +233,14 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
                                   latent_lengths)
         # inp_fake (batch,seq_len + 1),因为在decoder中，输入是未知的，即需要上一个时刻的输出来作为下一时刻的输入，所以此处相当于先声明一个向量，先给他先送进去。
         inp_fake = self._fake_inputs(inp_src, latent_lengths, src_lengths)
-
+        tic1 = time.perf_counter()
         dec1_results = self.compressor(inp_fake, outs_enc1, _dec1_init,
                                        enc_lengths=src_lengths,
                                        sampling_prob=1., hard=hard, tau=tau,
                                        desired_lengths=latent_lengths, mask_matrix=mask_matrix, inp_src=inp_src,
-                                       region=region, vocab=vocab)
+                                       region=region, vocab=vocab,time_list=decoder_time_list)
+        tic2 = time.perf_counter()
+        decoder_time_list[1] += tic2 - tic1
         # logits_dec1(batch,latent_size,vocab_size -> 此处还未映射) outs_dec1 (batch,seq_len+1,hid_size), dists_dec1 (batch,seq_len,vocab_size):已经one-hot的结果
         logits_dec1, outs_dec1, _, dists_dec1, _, _ = dec1_results
         # print(self.compressor.Wc.weight)

@@ -3,10 +3,13 @@ import numpy as np
 from scipy import sparse
 from scipy.sparse import lil_matrix
 
+from models.constants import zero_poi
+
+
 def load_weight(emb_file):
     # 简单处理一下，开一个74671 + 1(oov向量)大小的emb_w
     weights_l = np.loadtxt(emb_file,skiprows=1)
-    emb_w = np.zeros((74671+1,weights_l.shape[1]-1))
+    emb_w = np.zeros((zero_poi + 1,weights_l.shape[1]-1))
     # emb_w = np.zeros((weights_l.shape[0]+1,weights_l.shape[1]-1))
     for weight in weights_l:
         idx = int(weight[0])

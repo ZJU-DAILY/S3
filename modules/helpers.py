@@ -4,7 +4,7 @@ import torch
 from numpy import mean
 from torch.nn import functional as F
 from torch.nn.functional import gumbel_softmax
-from preprocess.SpatialRegionTools import cell2gps
+from preprocess.SpatialRegionTools import cell2gps, lonlat2meters, cell2meters
 from sklearn.neighbors import KDTree
 import numpy as np
 import math
@@ -165,15 +165,31 @@ def module_grad_wrt_loss(optimizers, module, loss, prefix=None):
     return mean_norm
 
 
-def getSED(region, p, start, end):
-    x, y = cell2gps(region, int(p))
-    st_x, st_y = cell2gps(region, int(start))
-    en_x, en_y = cell2gps(region, int(end))
+def getDistance(region, p, start, end, mode):
+    x, y = cell2meters(region, int(p))
+    st_x, st_y = cell2meters(region, int(start))
+    en_x, en_y = cell2meters(region, int(end))
     #     Ax + By + C = 0
-    return getSED4GPS((x, y), (st_x, st_y), (en_x, en_y))
+    if mode == "sed":
+        return getSED4GPS((x, y), (st_x, st_y), (en_x, en_y))
+    elif mode == "ped":
+        return getPED4GPS((x, y), (st_x, st_y), (en_x, en_y))
 
 
 def getSED4GPS(p, start, end):
+    x, y = p
+    st_x, st_y = start
+    en_x, en_y = end
+
+    # SED
+    if st_x == en_x:
+        return abs(x - st_x)
+    k = (st_y - en_y) / (st_x - en_x)
+    b = en_y - k * en_x
+    sp_y = k * x + b
+    return abs(sp_y - y)
+
+def getPED4GPS(p, start, end):
     x, y = p
     st_x, st_y = start
     en_x, en_y = end
@@ -185,16 +201,10 @@ def getSED4GPS(p, start, end):
     B = -1
     C = st_y - st_x * A
     return abs(A * x + B * y + C) / math.sqrt(A * A + B * B)
-    # SED
-    # if st_x == en_x:
-    #     return abs(x - st_x)
-    # k = (st_y - en_y) / (st_x - en_x)
-    # b = en_y - k * en_x
-    # sp_y = k * x + b
-    # return abs(sp_y - y)
 
 
-def SEDsimilarity(region, src, trg):
+# 可以用于Seq3压缩后的轨迹和原始轨迹空间距离上的运算
+def SEDsimilarity(region, src, trg, mode):
     # p为慢指针（指向trg），f为快指针（指向src）。src的长度应该大于等于trg
     p = 0
     f = 0
@@ -209,7 +219,7 @@ def SEDsimilarity(region, src, trg):
             en = trg[p]
             while trg[p] != src[f]:
                 in_ = src[f]
-                dis = getSED(region, int(in_), int(st), int(en))
+                dis = getDistance(region, int(in_), int(st), int(en),mode)
                 if dis > maxSED:
                     maxSED = dis
                     idx = f
@@ -261,12 +271,17 @@ def getCompress(region, src, trg):
     return resTrj, trg_x_ori, trg_y_ori
 
 
-def getMaxError(st, en, points):
+def getMaxError(st, en, points, mode):
     maxErr = -1
     idx = -1
+    err = -1
     for i in range(st, en + 1):
-        if maxErr < getSED4GPS(points[i], points[st], points[en]):
-            maxErr = getSED4GPS(points[i], points[st], points[en])
+        if mode == 'ped':
+            err = getPED4GPS(points[i], points[st], points[en])
+        elif mode == 'sed':
+            err = getSED4GPS(points[i], points[st], points[en])
+        if maxErr < err:
+            maxErr = err
             idx = i
     return idx, maxErr
 
@@ -283,13 +298,13 @@ def cmp(a, b):
 
 
 # adaptive douglas-peucker
-def adp(points, max_len):
+def adp(points, max_len, mode):
     if max_len > len(points):
         return None
     q = []
     st = 0
     en = len(points) - 1
-    q.append({(st, en): getMaxError(st, en, points)})
+    q.append({(st, en): getMaxError(st, en, points,mode)})
     cnt = 2
     res = [st, en]
     maxErr = -1
@@ -298,8 +313,8 @@ def adp(points, max_len):
         solu = q.pop()
         cnt += 1
         (st, en), (split, maxErr) = getKey_Value(solu)
-        q.append({(st, split): getMaxError(st, split, points)})
-        q.append({(split, en): getMaxError(split, en, points)})
+        q.append({(st, split): getMaxError(st, split, points,mode)})
+        q.append({(split, en): getMaxError(split, en, points,mode)})
         res.append(split)
     q.sort(key=functools.cmp_to_key(cmp))
     solu = q.pop()
@@ -355,7 +370,7 @@ def id2gps(region, trj):
     return points
 
 
-def getErr(region, vocab, inp_src, seqs, cur):
+def getErr(region, vocab, inp_src, seqs, cur, mode):
     res = []
 
     def deal(p):
@@ -391,7 +406,7 @@ def getErr(region, vocab, inp_src, seqs, cur):
             st = seq[st]
             en = seq[en]
             res.append(
-                getSED(region, vocab.id2tok[src[p].item()], vocab.id2tok[src[st].item()], vocab.id2tok[src[en].item()]))
+                getDistance(region, vocab.id2tok[src[p].item()], vocab.id2tok[src[st].item()], vocab.id2tok[src[en].item()], mode))
         except Exception as e:
             print(seq)
             print(src)

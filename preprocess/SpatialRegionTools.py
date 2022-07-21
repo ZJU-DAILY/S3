@@ -53,6 +53,9 @@ def cell2gps(region, cell):
     x, y = cell2coord(region, cell)
     return meters2lonlat(x, y)
 
+def cell2meters(region,cell):
+    x, y = cell2coord(region, cell)
+    return x,y
 
 def gps2offset(region, lon, lat):
     x, y = lonlat2meters(lon, lat)
