@@ -12,7 +12,7 @@ from modules.data.collates import LMCollate
 from modules.data.datasets import SentenceLMDataset
 from modules.data.samplers import SortedSampler, BucketBatchSampler
 from modules.data.vocab import Vocab
-from modules.modules import SeqReader
+from modules.module import SeqReader
 # from mylogger.experiment import Experiment
 from sys_config import EXP_DIR, MODEL_CNF_DIR
 from utils.generic import number_h

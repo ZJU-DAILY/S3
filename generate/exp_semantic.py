@@ -6,6 +6,10 @@
 # @blogs ：https://segmentfault.com/u/alec_5e8962e4635ca
 
 import os
+import sys
+sys.path.append('/home/hch/Desktop/trjcompress/modules/')
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import pickle
 import time
 
@@ -24,8 +28,7 @@ from utils.training import load_checkpoint
 import numpy as np
 from modules.helpers import adp
 from models.seq3_losses import r, sed_loss
-import sys
-sys.path.append('/home/hch/Desktop/trjcompress/modules/')
+
 
 
 
@@ -235,7 +238,6 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                     _, idx, maxErr = adp(points, complen, metric)
                     tic2 = time.perf_counter()
                     time_adp += tic2 - tic1
-                    comp_vid_adp = [src_vid[i].item() for i in idx]
                     s_loss_adp = maxErr
                 batch_eval_metric_loss_adp.append(s_loss_adp)
 
@@ -266,6 +268,11 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
     print(f"dp\t|\t推理用时:\t{time_dp}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_dp)}")
     print(f"bottom up\t|\t推理用时:\t{time_btup} |\t{metric}:\t{np.mean(batch_eval_metric_loss_btup)}")
 
+    res = f"Tea\t|\t推理用时:\t{time_list[0]}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_seq3)}\n" \
+          f"TDTR\t|\t推理用时:\t{time_adp}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_adp)}\n" \
+          f"dp\t|\t推理用时:\t{time_dp}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_dp)}\n" \
+          f"bottom up\t|\t推理用时:\t{time_btup} |\t{metric}:\t{np.mean(batch_eval_metric_loss_btup)}\n"
+    return res
 
 path = None
 seed = 1
@@ -294,8 +301,11 @@ with open('../preprocess/pickle.txt', 'rb') as f:
 region = pickle.loads(var_a)
 
 data_loader, model, vocab = load_model(path, checkpoint, src_file, device)
-# 1-5对应90%-50%的压缩率
-range_ = range(1, 6)
-for ratio in range_:
-    print(f"压缩率: {ratio / 10} \n------------------------")
-    compress_seq3(data_loader, ratio / 10, model, vocab, region, metric)
+with open(f"../experiments/result_{checkpoint}_{metric}", "w") as f:
+    # 1-5对应90%-50%的压缩率
+    range_ = range(1, 6)
+    for ratio in range_:
+        print(f"压缩率: {ratio / 10} \n------------------------")
+        head = f"压缩率: {ratio / 10} \n------------------------\n"
+        res = compress_seq3(data_loader, ratio / 10, model, vocab, region, metric)
+        f.write(head + res + "\n")

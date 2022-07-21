@@ -4,7 +4,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from modules.modules import RecurrentHelper, AttSeqDecoder, SeqReader
+from modules.module import RecurrentHelper, AttSeqDecoder, SeqReader
 from utils.gcn_emb import gcn_emb
 
 

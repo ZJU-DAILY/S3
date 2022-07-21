@@ -17,7 +17,7 @@ from modules.data.collates import Seq2SeqCollate, Seq2SeqOOVCollate
 from modules.data.datasets import AEDataset
 from modules.data.samplers import BucketBatchSampler
 from modules.models import Seq2Seq2Seq
-from modules.modules import SeqReader
+from modules.module import SeqReader
 # from mylogger.attention import samples2html
 # from mylogger.experiment import Experiment
 from sys_config import EXP_DIR, EMBS_PATH, MODEL_CNF_DIR
