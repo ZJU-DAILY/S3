@@ -7,7 +7,6 @@ from sklearn.neighbors import KDTree
 import pickle
 import sys
 
-
 sys.setrecursionlimit(10000000)
 
 
@@ -53,9 +52,11 @@ def cell2gps(region, cell):
     x, y = cell2coord(region, cell)
     return meters2lonlat(x, y)
 
-def cell2meters(region,cell):
+
+def cell2meters(region, cell):
     x, y = cell2coord(region, cell)
-    return x,y
+    return x, y
+
 
 def gps2offset(region, lon, lat):
     x, y = lonlat2meters(lon, lat)
@@ -264,6 +265,7 @@ class SpacialRegion:
         numy = round(self.maxy - self.miny, 6) / ystep
         self.numy = int(math.ceil(numy))
 
+
 def createVocab_save(path):
     # 构建词表以及kdtree
     # 北京的配置信息
@@ -279,6 +281,8 @@ def createVocab_save(path):
     var_b = pickle.dumps(region)
     with open('pickle.txt', 'wb') as f:
         pickle.dump(var_b, f)
+
+
 # with open('pickle.txt', 'rb') as f:
 #     region = pickle.load(f)
 # region = pickle.loads(region)
@@ -302,7 +306,7 @@ def seq2str(seq):
                 res += str(seq[i]) + '\n'
             else:
                 res += str(seq[i]) + ' '
-    return res,leng
+    return res, leng
 
 
 def str2trip(ss):
@@ -319,7 +323,21 @@ def str2trip(ss):
         trip.append([x, y])
     return trip
 
-
-
-
-
+# # 维度
+# n1 = 22.514866
+# n2 = 22.514866
+# # 经度
+# e1 = 113.388444
+# e2 = 114.379378
+# jl_jd = 102834.74258026089786013677476285
+#
+# jl_wd = 111712.69150641055729984301412873
+#
+# b = math.fabs((e1 - e2) * jl_jd)
+#
+# a = math.fabs((n1 - n2) * jl_wd)
+# print(math.sqrt((a * a + b * b)))
+#
+# x, y = lonlat2meters(e1, n1)
+# p, q = lonlat2meters(e2, n2)
+# print(math.sqrt((p - x) * (p - x) + (q - y) * (q - y)))

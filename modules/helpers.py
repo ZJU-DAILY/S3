@@ -8,6 +8,7 @@ from preprocess.SpatialRegionTools import cell2gps, lonlat2meters, cell2meters
 from sklearn.neighbors import KDTree
 import numpy as np
 import math
+from models.constants import minerr
 
 
 def sequence_mask(lengths, max_len=None):
@@ -189,6 +190,7 @@ def getSED4GPS(p, start, end):
     sp_y = k * x + b
     return abs(sp_y - y)
 
+
 def getPED4GPS(p, start, end):
     x, y = p
     st_x, st_y = start
@@ -203,14 +205,17 @@ def getPED4GPS(p, start, end):
     return abs(A * x + B * y + C) / math.sqrt(A * A + B * B)
 
 
-# 可以用于Seq3压缩后的轨迹和原始轨迹空间距离上的运算
 def SEDsimilarity(region, src, trg, mode):
+    if len(src) == len(trg):
+        print("the length of src is same with trg.")
     # p为慢指针（指向trg），f为快指针（指向src）。src的长度应该大于等于trg
     p = 0
     f = 0
-    idx = -1
     maxSED = -1
     while p < len(trg) and f < len(src):
+        if src[f] == '' or src[f] == 'UNK':
+            f += 1
+            continue
         if trg[p] == src[f]:
             p += 1
             f += 1
@@ -218,13 +223,17 @@ def SEDsimilarity(region, src, trg, mode):
             st = trg[p - 1]
             en = trg[p]
             while trg[p] != src[f]:
+                if src[f] == '' or src[f] == 'UNK':
+                    f += 1
+                    continue
                 in_ = src[f]
-                dis = getDistance(region, int(in_), int(st), int(en),mode)
-                if dis > maxSED:
-                    maxSED = dis
-                    idx = f
+                dis = getDistance(region, int(in_), int(st), int(en), mode)
+                maxSED = max(maxSED, dis)
                 f += 1
-    return maxSED, idx
+    if maxSED == -1:
+        print("errrr")
+        maxSED = 0
+    return maxSED
 
 
 def cleanTrj(src):
@@ -304,7 +313,7 @@ def adp(points, max_len, mode):
     q = []
     st = 0
     en = len(points) - 1
-    q.append({(st, en): getMaxError(st, en, points,mode)})
+    q.append({(st, en): getMaxError(st, en, points, mode)})
     cnt = 2
     res = [st, en]
     maxErr = -1
@@ -313,8 +322,8 @@ def adp(points, max_len, mode):
         solu = q.pop()
         cnt += 1
         (st, en), (split, maxErr) = getKey_Value(solu)
-        q.append({(st, split): getMaxError(st, split, points,mode)})
-        q.append({(split, en): getMaxError(split, en, points,mode)})
+        q.append({(st, split): getMaxError(st, split, points, mode)})
+        q.append({(split, en): getMaxError(split, en, points, mode)})
         res.append(split)
     q.sort(key=functools.cmp_to_key(cmp))
     solu = q.pop()
@@ -362,6 +371,48 @@ def squish(points, max_buffer_size):
     return pp, idx, max_err
 
 
+def calculate_error(seg1, seg2):
+    pass
+
+
+def btup(points, max_len, mode):
+    segs = []
+    for i in range(len(points), 2):
+        if i + 2 < len(points):
+            segs.append((i, i + 2))
+        else:
+            segs.append((i))
+    merge_cost = []
+    for i in range(len(segs) - 1):
+        merge_cost.append(calculate_error(segs[i], segs[i + 1]))
+
+
+def dp(const_src, src, mp_src, max_len, mode, region, step=1):
+    if step + 1 >= max_len:
+        comp = list(src[0:step])
+        comp.append(src[-1])
+        idx = [mp_src[p] for p in comp]
+        return comp, idx
+    for i in range(step, len(src) - 1):
+        swap(src, i, step)
+        comp = list(src[0:step])
+        comp.append(src[-1])
+        comp.sort(key=lambda j: mp_src[j])
+        err = SEDsimilarity(region, const_src, comp, mode)
+        if err < minerr:
+            tmp = minerr
+            minerr = err
+            dp(const_src, src, mp_src, max_len, mode, region, step + 1)
+            minerr = tmp
+        swap(src, i, step)
+
+
+def swap(points, i, j):
+    tmp = points[i]
+    points[i] = points[j]
+    points[j] = tmp
+
+
 def id2gps(region, trj):
     points = []
     for p in trj:
@@ -406,7 +457,8 @@ def getErr(region, vocab, inp_src, seqs, cur, mode):
             st = seq[st]
             en = seq[en]
             res.append(
-                getDistance(region, vocab.id2tok[src[p].item()], vocab.id2tok[src[st].item()], vocab.id2tok[src[en].item()], mode))
+                getDistance(region, vocab.id2tok[src[p].item()], vocab.id2tok[src[st].item()],
+                            vocab.id2tok[src[en].item()], mode))
         except Exception as e:
             print(seq)
             print(src)

@@ -7,19 +7,19 @@
 
 import os
 import sys
+
 sys.path.append('/home/hch/Desktop/trjcompress/modules/')
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pickle
 import time
 
-from modules.helpers import sequence_mask, getCompress
+from modules.helpers import sequence_mask, getCompress, dp
 from preprocess.SpatialRegionTools import cell2gps, cell2meters
 from sys_config import DATA_DIR
 
 import torch
 from torch.utils.data import DataLoader
-
 
 from modules.data.collates import Seq2SeqOOVCollate
 from modules.data.datasets import AEDataset
@@ -28,9 +28,7 @@ from utils.training import load_checkpoint
 import numpy as np
 from modules.helpers import adp
 from models.seq3_losses import r, sed_loss
-
-
-
+from models.constants import minerr
 
 def sematic_cal(model, inp, dec1, src_lengths, trg_lengths, vocab):
     enc_mask = sequence_mask(src_lengths).unsqueeze(-1).float()
@@ -151,6 +149,7 @@ def load_model(path, checkpoint, src_file, device):
 
     return data_loader, model, vocab
 
+
 # def cal_metric(metric):
 #     if meritc == 'ped':
 #         pass
@@ -160,7 +159,6 @@ def load_model(path, checkpoint, src_file, device):
 #         pass
 
 def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
-
     batch_eval_loss = []
     batch_eval_metric_loss_seq3 = []
     batch_eval_metric_loss_adp = []
@@ -174,7 +172,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
 
     iterator = enumerate(data_loader, 1)
     time_list = [0, 0]
-    rollback_time_list = [0,0]
+    rollback_time_list = [0, 0]
 
     with torch.no_grad():
         for i, batch in iterator:
@@ -191,11 +189,10 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
             m_zeros = torch.zeros(inp_src.size(0), vocab.size).to(inp_src)
             mask_matrix = m_zeros.scatter(1, inp_src, 1)
 
-
             rollback_time_list = time_list
             outputs = model(inp_src, inp_trg, src_lengths, trg_lengths,
-                            sampling=0, mask_matrix=mask_matrix, vocab=vocab, region=region,decoder_time_list=time_list)
-
+                            sampling=0, mask_matrix=mask_matrix, vocab=vocab, region=region,
+                            decoder_time_list=time_list)
 
             enc1, dec1, enc2, dec2 = outputs
 
@@ -217,7 +214,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                         s_loss_seq3 = sematic_simp(model, src_vid, comp_vid, vocab)
                     else:
                         comp_sort_gid = getCompress(region, src_gid, comp_gid)[0]
-                        s_loss_seq3 = sed_loss(region,src_gid,comp_sort_gid,metric)
+                        s_loss_seq3 = sed_loss(region, src_gid, comp_sort_gid, metric)
                 except Exception as e:
                     print("exception occured")
                     time_list = rollback_time_list
@@ -242,9 +239,12 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                 batch_eval_metric_loss_adp.append(s_loss_adp)
 
                 # # dp
-                # tic1 = time.perf_counter()
-                # _, idx, maxErr = adp(points, complen,meritc)
-                # tic2 = time.perf_counter()
+                mp_src = {num: i for i, num in enumerate(src_gid)}
+                src_copy = src_gid.copy()
+                tic1 = time.perf_counter()
+                minerr = float('inf')
+                _, idx = dp(src_copy, src_gid, mp_src, complen, metric, region)
+                tic2 = time.perf_counter()
                 # time_dp += tic2 - tic1
                 # comp_vid_adp = [src_vid[i].item() for i in idx]
                 # s_loss_adp = sematic_simp(model, src_vid, comp_vid_adp, vocab)
@@ -257,10 +257,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                 # comp_vid_adp = [src_vid[i].item() for i in idx]
                 # s_loss_adp = sematic_simp(model, src_vid, comp_vid_adp, vocab)
 
-
-
             # batch_eval_loss.append(np.mean(loss))
-
 
     # print(f"压缩率 {max_ratio},耗时 {time_sum},误差 {np.mean(batch_eval_loss)},关键程度 {np.mean(key_info)},语义相似度 {np.mean(batch_eval_semantic_loss_seq3)},失真 {np.mean(delta)}")
     print(f"Tea\t|\t推理用时:\t{time_list[0]}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_seq3)}")
@@ -274,6 +271,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
           f"bottom up\t|\t推理用时:\t{time_btup} |\t{metric}:\t{np.mean(batch_eval_metric_loss_btup)}\n"
     return res
 
+
 path = None
 seed = 1
 device = "cuda"
@@ -283,8 +281,6 @@ torch.manual_seed(seed)
 if torch.cuda.is_available():
     torch.cuda.manual_seed(seed)
 
-
-
 # metrics = ['ped','sed','ss']
 # datasets = ['geolife','tdrive']
 #
@@ -293,7 +289,6 @@ if torch.cuda.is_available():
 #         checkpoint = "seq3.full_" + dataset + "-" + meritc
 metric = sys.argv[1]
 checkpoint = "seq3.full_-valid"
-
 
 src_file = os.path.join(DATA_DIR, "infer.src")
 with open('../preprocess/pickle.txt', 'rb') as f:

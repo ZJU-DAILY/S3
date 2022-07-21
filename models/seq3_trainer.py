@@ -29,6 +29,7 @@ class Seq3Trainer(Trainer):
         self.len_max = self.anneal_init(self.config["model"]["max_length"])
         self.mask = self.config["model"]["mask"]
         self.mask_fn = self.config["model"]["mask_fn"]
+        self.metric = self.config["model"].get("metric",None)
 
     def _debug_grads(self):
         return list(sorted([(n, p.grad) for n, p in
@@ -172,7 +173,7 @@ class Seq3Trainer(Trainer):
 
         return prior_loss, prior_loss_time, logits_oracle
 
-    def _sed_loss(self, inp, dec1):
+    def _sed_loss(self, inp, dec1, metric):
         vocab = self._get_vocab()
         region = self._get_region()
         src = devectorize(inp.tolist(), vocab.id2tok, vocab.tok2id[vocab.EOS],
@@ -181,7 +182,7 @@ class Seq3Trainer(Trainer):
                           strip_eos=None, oov_map=None, pp=True)
         comp_trj = [getCompress(region, src_, trg_)[0] for src_, trg_ in zip(src, trg)]
         # print(comp_trj,src)
-        loss = [sed_loss(region, src_, trg_) for src_, trg_ in zip(src, comp_trj)]
+        loss = [sed_loss(region, src_, trg_, metric) for src_, trg_ in zip(src, comp_trj)]
         # loss = sed_loss(region, src, comp_trj)
 
         return mean(loss)
@@ -406,6 +407,9 @@ class Seq3Trainer(Trainer):
         region = self._get_region()
 
         iterator = self.valid_loader
+        loss_sed = 0
+        loss_semantic = 0
+
         with torch.no_grad():
             for i_batch, batch in enumerate(iterator, 1):
                 batch_oov_map = batch[-1]
@@ -435,26 +439,29 @@ class Seq3Trainer(Trainer):
                                                latent_lengths, mask_matrix=mask_matrix, inp_src=inp_src, vocab=vocab,
                                                region=region)
                 losses = []
-                # --------------------------------------------------------------
-                # 1 - SED metric
-                # --------------------------------------------------------------
-                # loss_sed = self._sed_loss(inp_src, dec)
-                loss_sed = 0
 
 
-                # --------------------------------------------------------------
-                # 2 - Semantic metric
-                # --------------------------------------------------------------
-                loss_semantic = self._sematic_loss(inp_src, dec, src_lengths, latent_lengths,vocab)
+                if self.metric == 'sed' or self.metric == 'ped':
+                    # --------------------------------------------------------------
+                    # 1 - SED metric
+                    # --------------------------------------------------------------
+                    loss_sed += self._sed_loss(inp_src, dec, self.metric)
+                elif self.metric == 'ss':
+                    # --------------------------------------------------------------
+                    # 2 - Semantic metric
+                    # --------------------------------------------------------------
+                    loss_semantic += self._sematic_loss(inp_src, dec, src_lengths, latent_lengths, vocab)
+
+
                 # s_loss_ = 0
                 # for _src, _src_len, comp in zip(inp_src, src_lengths, dec[3].max(-1)[1]):
                 #     _src = _src[:_src_len]
                 #     s_loss_ += self._sematic_simp(_src, comp, vocab)
                 # loss_semantic = s_loss_ / inp_src.size(0)
                 # 两个metric之间设置一个权重，让他们数量级更加相似
-                lamda = 0.1
-                # print("sed loss: ",loss_sed,"semantic loss: ",loss_semantic)
-                loss_sum = loss_sed + lamda * loss_semantic  # + loss_sum + sum(losses).item()
+            lamda = 0.1
+            # print("sed loss: ",loss_sed,"semantic loss: ",loss_semantic)
+            loss_sum = loss_sed + lamda * loss_semantic  # + loss_sum + sum(losses).item()
         return loss_sum
 
     def _get_vocab(self):
