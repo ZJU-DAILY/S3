@@ -8,7 +8,6 @@ from preprocess.SpatialRegionTools import cell2gps, lonlat2meters, cell2meters
 from sklearn.neighbors import KDTree
 import numpy as np
 import math
-from models.constants import minerr
 
 
 def sequence_mask(lengths, max_len=None):
@@ -167,9 +166,14 @@ def module_grad_wrt_loss(optimizers, module, loss, prefix=None):
 
 
 def getDistance(region, p, start, end, mode):
-    x, y = cell2meters(region, int(p))
-    st_x, st_y = cell2meters(region, int(start))
-    en_x, en_y = cell2meters(region, int(end))
+    if region == None:
+        x, y = p
+        st_x, st_y = start
+        en_x, en_y = end
+    else:
+        x, y = cell2meters(region, int(p))
+        st_x, st_y = cell2meters(region, int(start))
+        en_x, en_y = cell2meters(region, int(end))
     #     Ax + By + C = 0
     if mode == "sed":
         return getSED4GPS((x, y), (st_x, st_y), (en_x, en_y))
@@ -371,22 +375,66 @@ def squish(points, max_buffer_size):
     return pp, idx, max_err
 
 
-def calculate_error(seg1, seg2):
-    pass
+def calculate_error(points, seg1, seg2, mode):
+    st = points[seg1[0]]
+    en = points[seg2[-1]]
+    max_err = -1
+    for i in range(seg1[0] + 1,seg2[-1]):
+        p = points[i]
+        if mode == 'ped':
+            max_err = max(max_err,getPED4GPS(p,st,en))
+        elif mode == 'sed':
+            max_err = max(max_err, getSED4GPS(p, st, en))
+    return max_err
 
 
 def btup(points, max_len, mode):
     segs = []
-    for i in range(len(points), 2):
-        if i + 2 < len(points):
-            segs.append((i, i + 2))
-        else:
-            segs.append((i))
-    merge_cost = []
-    for i in range(len(segs) - 1):
-        merge_cost.append(calculate_error(segs[i], segs[i + 1]))
+    for i in range(len(points) - 1):
+        segs.append([i, i + 1])
+    cur_len = 2
+    while len(segs) > max_len - 1:
+        merge_cost = []
+        min_cost = float('inf')
+        min_idx = -1
+        for i in range(len(segs) - 1):
+            err = calculate_error(points, segs[i], segs[i + 1], mode)
+            merge_cost.append(err)
+            if err < min_cost:
+                min_cost = err
+                min_idx = i
+        head = segs[min_idx]
+        tail = segs[min_idx + 1]
+        merge = [head[0],tail[-1]]
+        segs.insert(min_idx,merge)
+        segs.remove(head)
+        segs.remove(tail)
+        merge_cost.pop(min_idx)
+        cur_len += 1
+    # max_err = -1
+    pp = []
+    idx = []
+    for i in range(len(segs)):
+        # max_err = max(max_err,calculate_error(points,[segs[i][0]],[segs[i][-1]],mode))
+        idx.append(segs[i][0])
+        pp.append(points[idx[-1]])
+        if i == len(segs) - 1:
+            idx.append(segs[i][1])
+            pp.append(points[idx[-1]])
 
+    return pp,idx,min_cost
 
+def static_vars(**kwargs):
+    '''
+    装饰器，用于添加静态局部变量，相当于设置了函数本身的属性，其实使用类也可完成此功能
+    '''
+    def decorate(func):
+        for k in kwargs:
+            setattr(func, k, kwargs[k])
+        return func
+    return decorate
+
+@static_vars(minerr=float('inf'))
 def dp(const_src, src, mp_src, max_len, mode, region, step=1):
     if step + 1 >= max_len:
         comp = list(src[0:step])
@@ -399,11 +447,11 @@ def dp(const_src, src, mp_src, max_len, mode, region, step=1):
         comp.append(src[-1])
         comp.sort(key=lambda j: mp_src[j])
         err = SEDsimilarity(region, const_src, comp, mode)
-        if err < minerr:
-            tmp = minerr
-            minerr = err
+        if err < dp.minerr:
+            tmp = dp.minerr
+            dp.minerr = err
             dp(const_src, src, mp_src, max_len, mode, region, step + 1)
-            minerr = tmp
+            dp.minerr = tmp
         swap(src, i, step)
 
 

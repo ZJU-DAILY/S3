@@ -14,7 +14,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pickle
 import time
 
-from modules.helpers import sequence_mask, getCompress, dp
+from modules.helpers import sequence_mask, getCompress, dp, btup
 from preprocess.SpatialRegionTools import cell2gps, cell2meters
 from sys_config import DATA_DIR
 
@@ -249,9 +249,9 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                 # comp_vid_adp = [src_vid[i].item() for i in idx]
                 # s_loss_adp = sematic_simp(model, src_vid, comp_vid_adp, vocab)
                 #
-                # # bottom-up
+                # bottom-up
                 # tic1 = time.perf_counter()
-                # _, idx, maxErr = adp(points, complen,meritc)
+                # _, idx, maxErr = btup(points, complen,metric)
                 # tic2 = time.perf_counter()
                 # time_btup += tic2 - tic1
                 # comp_vid_adp = [src_vid[i].item() for i in idx]
