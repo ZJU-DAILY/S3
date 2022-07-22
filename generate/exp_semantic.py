@@ -239,23 +239,32 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                 batch_eval_metric_loss_adp.append(s_loss_adp)
 
                 # # dp
-                mp_src = {num: i for i, num in enumerate(src_gid)}
-                src_copy = src_gid.copy()
-                tic1 = time.perf_counter()
-                minerr = float('inf')
-                _, idx = dp(src_copy, src_gid, mp_src, complen, metric, region)
-                tic2 = time.perf_counter()
+                # mp_src = {num: i for i, num in enumerate(src_gid)}
+                # src_copy = src_gid.copy()
+                # tic1 = time.perf_counter()
+                # minerr = float('inf')
+                # _, idx = dp(src_copy, src_gid, mp_src, complen, metric, region)
+                # tic2 = time.perf_counter()
                 # time_dp += tic2 - tic1
                 # comp_vid_adp = [src_vid[i].item() for i in idx]
                 # s_loss_adp = sematic_simp(model, src_vid, comp_vid_adp, vocab)
                 #
                 # bottom-up
-                # tic1 = time.perf_counter()
-                # _, idx, maxErr = btup(points, complen,metric)
-                # tic2 = time.perf_counter()
-                # time_btup += tic2 - tic1
-                # comp_vid_adp = [src_vid[i].item() for i in idx]
-                # s_loss_adp = sematic_simp(model, src_vid, comp_vid_adp, vocab)
+                if metric == "ss":
+                    tic1 = time.perf_counter()
+                    _, idx, maxErr = btup(points, complen,'sed')
+                    tic2 = time.perf_counter()
+                    time_btup += tic2 - tic1
+                    comp_vid_btup = [src_vid[i].item() for i in idx]
+                    s_loss_btup = sematic_simp(model, src_vid, comp_vid_btup, vocab)
+                else:
+                    tic1 = time.perf_counter()
+                    _, idx, maxErr = btup(points, complen, metric)
+                    tic2 = time.perf_counter()
+                    time_btup += tic2 - tic1
+                    s_loss_btup = maxErr
+                batch_eval_metric_loss_btup.append(s_loss_btup)
+
 
             # batch_eval_loss.append(np.mean(loss))
 
@@ -288,7 +297,7 @@ if torch.cuda.is_available():
 #     for dataset in datasets:
 #         checkpoint = "seq3.full_" + dataset + "-" + meritc
 metric = sys.argv[1]
-checkpoint = "seq3.full_-valid"
+checkpoint = "seq3.full_-ped"
 
 src_file = os.path.join(DATA_DIR, "infer.src")
 with open('../preprocess/pickle.txt', 'rb') as f:

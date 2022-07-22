@@ -390,9 +390,11 @@ def calculate_error(points, seg1, seg2, mode):
 
 def btup(points, max_len, mode):
     segs = []
-    for i in range(len(points) - 1):
-        segs.append([i, i + 1])
-    cur_len = 2
+    for i in range(0, len(points) - 1, 2):
+        st = i
+        en = min(len(points) - 1,i+2)
+        segs.append([st, en])
+
     while len(segs) > max_len - 1:
         merge_cost = []
         min_cost = float('inf')
@@ -410,7 +412,7 @@ def btup(points, max_len, mode):
         segs.remove(head)
         segs.remove(tail)
         merge_cost.pop(min_idx)
-        cur_len += 1
+
     # max_err = -1
     pp = []
     idx = []
