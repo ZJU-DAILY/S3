@@ -588,6 +588,9 @@ class AttSeqDecoder(nn.Module):
                         # if mask_vector[0][0] == 1:
                         #     print()
                         dist = straight_softmax(logits[-1].squeeze(), tau, hard, mask_matrix)
+                        # if 0 in dist.max(-1)[1]:
+                        #     print("module:592 => 0 in dist.max(-1)[1]")
+                        #     straight_softmax(logits[-1].squeeze(), tau, hard, mask_matrix)
                     else:
                         dist = straight_softmax(logits[-1].squeeze(), tau, hard)
 
@@ -793,7 +796,7 @@ class AttSeqDecoder(nn.Module):
             tic2 = time.perf_counter()
 
             if time_list is not None:
-                time_list[0] += tic2 - tic1
+                time_list.append(tic2 - tic1)
 
             if self.learn_tau and self.training:
                 tau = 1 / (self.softplus(ho.squeeze()) + self.tau_0)

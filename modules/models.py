@@ -240,8 +240,8 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
                                        desired_lengths=latent_lengths, mask_matrix=mask_matrix, inp_src=inp_src,
                                        region=region, vocab=vocab,time_list=decoder_time_list)
         tic2 = time.perf_counter()
-        if decoder_time_list is not None:
-            decoder_time_list[1] += tic2 - tic1
+        # if decoder_time_list is not None:
+        #     decoder_time_list[1] += tic2 - tic1
         # logits_dec1(batch,latent_size,vocab_size -> 此处还未映射) outs_dec1 (batch,seq_len+1,hid_size), dists_dec1 (batch,seq_len,vocab_size):已经one-hot的结果
         logits_dec1, outs_dec1, _, dists_dec1, _, _ = dec1_results
         # print(self.compressor.Wc.weight)

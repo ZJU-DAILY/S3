@@ -8,7 +8,10 @@
 import os
 import sys
 
-sys.path.append('/home/hch/Desktop/trjcompress/modules/')
+from rl_brain import PolicyGradient
+
+sys.path.append('/home/hch/Desktop/trjcompress/modules')
+sys.path.append('/home/hch/Desktop/trjcompress/RL')
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pickle
@@ -29,6 +32,23 @@ import numpy as np
 from modules.helpers import adp
 from models.seq3_losses import r, sed_loss
 from models.constants import minerr
+from generate.error_search import error_search_algorithm
+
+from RL.rl_env_inc import TrajComp
+from RL.rl_brain import PolicyGradient
+
+def RL_algorithm(buffer_size, episode):
+    steps, observation = env.reset(episode, buffer_size)
+    for index in range(buffer_size, steps):
+        if index == steps - 1:
+            done = True
+        else:
+            done = False
+        action = RL.quick_time_action(observation)  # matrix implementation for fast efficiency when the model is ready
+        observation_, _ = env.step(episode, action, index, done, 'V')  # 'T' means Training, and 'V' means Validation
+        observation = observation_
+    idx, max_err = env.output(episode, 'V')
+    return idx, max_err
 
 def sematic_cal(model, inp, dec1, src_lengths, trg_lengths, vocab):
     enc_mask = sequence_mask(src_lengths).unsqueeze(-1).float()
@@ -163,16 +183,20 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
     batch_eval_metric_loss_seq3 = []
     batch_eval_metric_loss_adp = []
     batch_eval_metric_loss_btup = []
-    batch_eval_metric_loss_dp = []
+    batch_eval_metric_loss_error_search = []
+    batch_eval_metric_loss_RL = []
     # 平均每个点的重要程度
 
+    time_seq3 = 0
     time_adp = 0
     time_btup = 0
-    time_dp = 0
+    time_error_search = 0
+    time_RL = 0
+
 
     iterator = enumerate(data_loader, 1)
-    time_list = [0, 0]
-    rollback_time_list = [0, 0]
+    time_list = []
+    rollback_time_list = []
 
     with torch.no_grad():
         for i, batch in iterator:
@@ -189,7 +213,6 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
             m_zeros = torch.zeros(inp_src.size(0), vocab.size).to(inp_src)
             mask_matrix = m_zeros.scatter(1, inp_src, 1)
 
-            rollback_time_list = time_list
             outputs = model(inp_src, inp_trg, src_lengths, trg_lengths,
                             sampling=0, mask_matrix=mask_matrix, vocab=vocab, region=region,
                             decoder_time_list=time_list)
@@ -198,9 +221,12 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
 
             ik = 0
             for src_vid, _src_len, comp_vid, _trg_len in zip(inp_src, src_lengths, dec1[3].max(-1)[1], trg_lengths):
+
                 comp_vid = comp_vid[:_trg_len].tolist()
                 if 0 in comp_vid:
-                    comp_vid.remove(0)
+                    print("comp_vid has zero,so we rollback...")
+                    # time_list = rollback_time_list
+                    continue
                 src_vid = src_vid[:_src_len]
                 complen = len(comp_vid)
 
@@ -213,12 +239,22 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                     if metric == "ss":
                         s_loss_seq3 = sematic_simp(model, src_vid, comp_vid, vocab)
                     else:
-                        comp_sort_gid = getCompress(region, src_gid, comp_gid)[0]
+                        mp_src = {num: i for i, num in enumerate(src_gid)}
+                        comp_sort_gid = comp_gid.copy()
+                        # comp_sort_gid = getCompress(region, src_gid, comp_gid)[0]
+                        comp_sort_gid.sort(key=lambda j: mp_src[j])
+                        if src_gid[-1] not in comp_sort_gid:
+                            comp_sort_gid.append(src_gid[-1])
+                            complen = len(comp_sort_gid)
+                        # print("----------------------------------------------------")
+                        # print(src_gid)
+                        # print(comp_sort_gid)
                         s_loss_seq3 = sed_loss(region, src_gid, comp_sort_gid, metric)
                 except Exception as e:
                     print("exception occured")
-                    time_list = rollback_time_list
+                    # time_list = rollback_time_list
                     continue
+                # time_seq3 += time_list[ik]
                 batch_eval_metric_loss_seq3.append(s_loss_seq3)
 
                 # tdtr，一个完整的算法运算和获取
@@ -238,21 +274,26 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                     s_loss_adp = maxErr
                 batch_eval_metric_loss_adp.append(s_loss_adp)
 
-                # # dp
-                # mp_src = {num: i for i, num in enumerate(src_gid)}
-                # src_copy = src_gid.copy()
-                # tic1 = time.perf_counter()
-                # minerr = float('inf')
-                # _, idx = dp(src_copy, src_gid, mp_src, complen, metric, region)
-                # tic2 = time.perf_counter()
-                # time_dp += tic2 - tic1
-                # comp_vid_adp = [src_vid[i].item() for i in idx]
-                # s_loss_adp = sematic_simp(model, src_vid, comp_vid_adp, vocab)
-                #
+                # error-search
+                if metric == "ss":
+                    tic1 = time.perf_counter()
+                    idx, maxErr = error_search_algorithm(points, complen, 'sed')
+                    tic2 = time.perf_counter()
+                    time_error_search += tic2 - tic1
+                    comp_vid_ersh = [src_vid[i].item() for i in idx]
+                    s_loss_ersh = sematic_simp(model, src_vid, comp_vid_ersh, vocab)
+                else:
+                    tic1 = time.perf_counter()
+                    idx, maxErr = error_search_algorithm(points, complen, metric)
+                    tic2 = time.perf_counter()
+                    time_error_search += tic2 - tic1
+                    s_loss_ersh = maxErr
+                batch_eval_metric_loss_error_search.append(s_loss_ersh)
+
                 # bottom-up
                 if metric == "ss":
                     tic1 = time.perf_counter()
-                    _, idx, maxErr = btup(points, complen,'sed')
+                    _, idx, maxErr = btup(points, complen, 'sed')
                     tic2 = time.perf_counter()
                     time_btup += tic2 - tic1
                     comp_vid_btup = [src_vid[i].item() for i in idx]
@@ -265,20 +306,38 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                     s_loss_btup = maxErr
                 batch_eval_metric_loss_btup.append(s_loss_btup)
 
-
+                # RL
+                if metric == "ss":
+                    tic1 = time.perf_counter()
+                    _, idx, maxErr = RL_algorithm(complen,ik)
+                    tic2 = time.perf_counter()
+                    time_RL += tic2 - tic1
+                    comp_vid_rl = [src_vid[i].item() for i in idx]
+                    s_loss_rl = sematic_simp(model, src_vid, comp_vid_rl, vocab)
+                else:
+                    tic1 = time.perf_counter()
+                    _, idx, maxErr = RL_algorithm(complen,ik)
+                    tic2 = time.perf_counter()
+                    time_RL += tic2 - tic1
+                    s_loss_rl = maxErr
+                batch_eval_metric_loss_RL.append(s_loss_rl)
+                ik += 1
             # batch_eval_loss.append(np.mean(loss))
 
     # print(f"压缩率 {max_ratio},耗时 {time_sum},误差 {np.mean(batch_eval_loss)},关键程度 {np.mean(key_info)},语义相似度 {np.mean(batch_eval_semantic_loss_seq3)},失真 {np.mean(delta)}")
-    print(f"Tea\t|\t推理用时:\t{time_list[0]}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_seq3)}")
+    print(f"Tea\t|\t推理用时:\t{np.sum(time_list)}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_seq3)}")
     print(f"TDTR\t|\t推理用时:\t{time_adp}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_adp)}")
-    print(f"dp\t|\t推理用时:\t{time_dp}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_dp)}")
-    print(f"bottom up\t|\t推理用时:\t{time_btup} |\t{metric}:\t{np.mean(batch_eval_metric_loss_btup)}")
+    print(f"Error Search\t|\t推理用时:\t{time_error_search}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_error_search)}")
+    print(f"Bottom up\t|\t推理用时:\t{time_btup} |\t{metric}:\t{np.mean(batch_eval_metric_loss_btup)}")
 
-    res = f"Tea\t|\t推理用时:\t{time_list[0]}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_seq3)}\n" \
+    res = f"Tea\t|\t推理用时:\t{np.sum(time_list)}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_seq3)}\n" \
           f"TDTR\t|\t推理用时:\t{time_adp}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_adp)}\n" \
-          f"dp\t|\t推理用时:\t{time_dp}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_dp)}\n" \
-          f"bottom up\t|\t推理用时:\t{time_btup} |\t{metric}:\t{np.mean(batch_eval_metric_loss_btup)}\n"
+          f"Error Search\t|\t推理用时:\t{time_error_search}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_error_search)}\n" \
+          f"Bottom up\t|\t推理用时:\t{time_btup} |\t{metric}:\t{np.mean(batch_eval_metric_loss_btup)}\n"
     return res
+
+
+
 
 
 path = None
@@ -297,14 +356,38 @@ if torch.cuda.is_available():
 #     for dataset in datasets:
 #         checkpoint = "seq3.full_" + dataset + "-" + meritc
 metric = sys.argv[1]
-checkpoint = "seq3.full_-ped"
+datasets = sys.argv[2]
 
-src_file = os.path.join(DATA_DIR, "infer.src")
+if metric == 'ped':
+    checkpoint = "seq3.full_-ped"
+elif metric == 'sed':
+    checkpoint = "seq3.full_-sed"
+elif metric == 'ss':
+    checkpoint = "seq3.full_-valid"
+
+src_file = os.path.join(DATA_DIR, datasets + ".src")
 with open('../preprocess/pickle.txt', 'rb') as f:
     var_a = pickle.load(f)
 region = pickle.loads(var_a)
 
 data_loader, model, vocab = load_model(path, checkpoint, src_file, device)
+
+# ----------------------------------------------------------------
+# RL model init
+traj_path = src_file
+test_amount = 1000
+elist = [i for i in range(test_amount)]
+a_size = 3  # RLTS 3, RLTS-Skip 5
+s_size = 3  # RLTS 3, RLTS-Skip 5
+ratio = 0.1
+if metric == 'ss':
+    env = TrajComp(traj_path, 1000, region, a_size, s_size, 'sed')
+else:
+    env = TrajComp(traj_path, 1000, region, a_size, s_size, metric)
+RL = PolicyGradient(env.n_features, env.n_actions)
+RL.load('./save/0.00039190653824900003_ratio_0.1/')  # your_trained_model your_trained_model_skip
+
+# --------------------------------------------------------------------
 with open(f"../experiments/result_{checkpoint}_{metric}", "w") as f:
     # 1-5对应90%-50%的压缩率
     range_ = range(1, 6)

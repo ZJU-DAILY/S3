@@ -305,6 +305,9 @@ class Seq3Trainer(Trainer):
 
         batch_outputs = {"model_outputs": outputs}
 
+        # if 0 in dec1[3].max(-1)[1]:
+        #     print(dec1[3].max(-1))
+        #     print(mask_matrix)
         # --------------------------------------------------------------
         # 1 - RECONSTRUCTION
         # --------------------------------------------------------------
@@ -459,7 +462,7 @@ class Seq3Trainer(Trainer):
                 #     s_loss_ += self._sematic_simp(_src, comp, vocab)
                 # loss_semantic = s_loss_ / inp_src.size(0)
                 # 两个metric之间设置一个权重，让他们数量级更加相似
-            lamda = 0.1
+            lamda = 1
             # print("sed loss: ",loss_sed,"semantic loss: ",loss_semantic)
             loss_sum = loss_sed + lamda * loss_semantic  # + loss_sum + sum(losses).item()
         return loss_sum

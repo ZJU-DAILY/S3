@@ -379,10 +379,10 @@ def calculate_error(points, seg1, seg2, mode):
     st = points[seg1[0]]
     en = points[seg2[-1]]
     max_err = -1
-    for i in range(seg1[0] + 1,seg2[-1]):
+    for i in range(seg1[0] + 1, seg2[-1]):
         p = points[i]
         if mode == 'ped':
-            max_err = max(max_err,getPED4GPS(p,st,en))
+            max_err = max(max_err, getPED4GPS(p, st, en))
         elif mode == 'sed':
             max_err = max(max_err, getSED4GPS(p, st, en))
     return max_err
@@ -392,10 +392,11 @@ def btup(points, max_len, mode):
     segs = []
     for i in range(0, len(points) - 1, 2):
         st = i
-        en = min(len(points) - 1,i+2)
+        en = min(len(points) - 1, i + 2)
         segs.append([st, en])
 
-    while len(segs) > max_len - 1:
+    min_cost = float('inf')
+    while len(segs) + 1 > max_len:
         merge_cost = []
         min_cost = float('inf')
         min_idx = -1
@@ -407,34 +408,39 @@ def btup(points, max_len, mode):
                 min_idx = i
         head = segs[min_idx]
         tail = segs[min_idx + 1]
-        merge = [head[0],tail[-1]]
-        segs.insert(min_idx,merge)
+        merge = [head[0], tail[-1]]
+        segs.insert(min_idx, merge)
         segs.remove(head)
         segs.remove(tail)
         merge_cost.pop(min_idx)
 
-    # max_err = -1
+    max_err = -1
     pp = []
     idx = []
     for i in range(len(segs)):
-        # max_err = max(max_err,calculate_error(points,[segs[i][0]],[segs[i][-1]],mode))
+        max_err = max(max_err, calculate_error(points, [segs[i][0]], [segs[i][-1]], mode))
+        # if min_cost == float('inf'):
         idx.append(segs[i][0])
         pp.append(points[idx[-1]])
         if i == len(segs) - 1:
             idx.append(segs[i][1])
             pp.append(points[idx[-1]])
+    min_cost = max_err
+    return pp, idx, min_cost
 
-    return pp,idx,min_cost
 
 def static_vars(**kwargs):
     '''
     装饰器，用于添加静态局部变量，相当于设置了函数本身的属性，其实使用类也可完成此功能
     '''
+
     def decorate(func):
         for k in kwargs:
             setattr(func, k, kwargs[k])
         return func
+
     return decorate
+
 
 @static_vars(minerr=float('inf'))
 def dp(const_src, src, mp_src, max_len, mode, region, step=1):
