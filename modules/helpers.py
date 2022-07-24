@@ -171,9 +171,9 @@ def getDistance(region, p, start, end, mode):
         st_x, st_y = start
         en_x, en_y = end
     else:
-        x, y = cell2meters(region, int(p))
-        st_x, st_y = cell2meters(region, int(start))
-        en_x, en_y = cell2meters(region, int(end))
+        x, y = cell2gps(region, int(p))
+        st_x, st_y = cell2gps(region, int(start))
+        en_x, en_y = cell2gps(region, int(end))
     #     Ax + By + C = 0
     if mode == "sed":
         return getSED4GPS((x, y), (st_x, st_y), (en_x, en_y))

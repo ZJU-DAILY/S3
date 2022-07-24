@@ -30,7 +30,7 @@ def to_traj(file, region):
         time = 0
         traj = []
         for p in temp:
-            x, y = region.cell2gps(int(p))
+            x, y = cell2gps(region, int(p))
             traj.append([float(x), float(y), int(time)])
             time += 5
         trajs.append(traj)

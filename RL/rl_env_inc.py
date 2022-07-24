@@ -12,7 +12,7 @@ class TrajComp():
     def __init__(self, path, amount, region, a_size, s_size, metric):
         self.n_actions = a_size
         self.n_features = s_size
-        self._load(path, amount)
+        self._load(path, amount, region)
         self.region = region
         self.metric = metric
 
@@ -281,7 +281,7 @@ class TrajComp():
         # print('check and state', self.check, self.state)
         return np.array(self.state).reshape(1, -1), rw
 
-    def output(self, episode, metric, label='T'):
+    def output(self, episode, label='T'):
         if label == 'V-VIS':
             start = 0
             sim_traj = []
@@ -304,10 +304,10 @@ class TrajComp():
                 start = self.F_ward[start][1]
                 idx.append(start)
             sim_traj.append(self.ori_traj_set[episode][start])
-            idx.append(start)
-            if metric == 'sed':
+            # idx.append(start)
+            if self.metric == 'sed':
                 _, final_error = F.sed_error(self.ori_traj_set[episode], sim_traj)
-            elif metric == 'ped':
+            elif self.metric == 'ped':
                 _, final_error = F.ped_error(self.ori_traj_set[episode], sim_traj)
             return idx, final_error
         if label == 'T':

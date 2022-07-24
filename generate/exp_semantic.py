@@ -8,10 +8,9 @@
 import os
 import sys
 
-from rl_brain import PolicyGradient
 
-sys.path.append('/home/hch/Desktop/trjcompress/modules')
-sys.path.append('/home/hch/Desktop/trjcompress/RL')
+sys.path.append('/home/hch/Desktop/trjcompress/modules/')
+sys.path.append('/home/hch/Desktop/trjcompress/RL/')
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pickle
@@ -234,7 +233,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                 src_gid = [vocab.id2tok[p.item()] for p in src_vid]
                 try:
                     # points = [cell2meters(region, int(p)) for p in src_vid]
-                    points = [cell2meters(region, int(p)) for p in src_gid]
+                    points = [cell2gps(region, int(p)) for p in src_gid]
                     # Tea
                     if metric == "ss":
                         s_loss_seq3 = sematic_simp(model, src_vid, comp_vid, vocab)
@@ -309,14 +308,14 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                 # RL
                 if metric == "ss":
                     tic1 = time.perf_counter()
-                    _, idx, maxErr = RL_algorithm(complen,ik)
+                    idx, maxErr = RL_algorithm(complen,ik)
                     tic2 = time.perf_counter()
                     time_RL += tic2 - tic1
                     comp_vid_rl = [src_vid[i].item() for i in idx]
                     s_loss_rl = sematic_simp(model, src_vid, comp_vid_rl, vocab)
                 else:
                     tic1 = time.perf_counter()
-                    _, idx, maxErr = RL_algorithm(complen,ik)
+                    idx, maxErr = RL_algorithm(complen,ik)
                     tic2 = time.perf_counter()
                     time_RL += tic2 - tic1
                     s_loss_rl = maxErr
@@ -329,11 +328,13 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
     print(f"TDTR\t|\t推理用时:\t{time_adp}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_adp)}")
     print(f"Error Search\t|\t推理用时:\t{time_error_search}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_error_search)}")
     print(f"Bottom up\t|\t推理用时:\t{time_btup} |\t{metric}:\t{np.mean(batch_eval_metric_loss_btup)}")
+    print(f"RL\t|\t推理用时:\t{time_RL} |\t{metric}:\t{np.mean(batch_eval_metric_loss_RL)}")
 
     res = f"Tea\t|\t推理用时:\t{np.sum(time_list)}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_seq3)}\n" \
           f"TDTR\t|\t推理用时:\t{time_adp}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_adp)}\n" \
           f"Error Search\t|\t推理用时:\t{time_error_search}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_error_search)}\n" \
-          f"Bottom up\t|\t推理用时:\t{time_btup} |\t{metric}:\t{np.mean(batch_eval_metric_loss_btup)}\n"
+          f"Bottom up\t|\t推理用时:\t{time_btup} |\t{metric}:\t{np.mean(batch_eval_metric_loss_btup)}\n" \
+          f"RL\t|\t推理用时:\t{time_RL} |\t{metric}:\t{np.mean(batch_eval_metric_loss_RL)}\n"
     return res
 
 
@@ -385,7 +386,7 @@ if metric == 'ss':
 else:
     env = TrajComp(traj_path, 1000, region, a_size, s_size, metric)
 RL = PolicyGradient(env.n_features, env.n_actions)
-RL.load('./save/0.00039190653824900003_ratio_0.1/')  # your_trained_model your_trained_model_skip
+RL.load('../RL/save/0.00039190653824900003_ratio_0.1/')  # your_trained_model your_trained_model_skip
 
 # --------------------------------------------------------------------
 with open(f"../experiments/result_{checkpoint}_{metric}", "w") as f:
