@@ -7,8 +7,9 @@ from sys_config import DATA_DIR, BASE_DIR
 from generate.utils import compress_seq3
 from utils.viz import seq3_attentions
 
-path = os.path.join(BASE_DIR, "checkpoints/best_model")
-checkpoint = "seq3.full_-prior"
+# path = os.path.join(BASE_DIR, "checkpoints/best_model")
+path = None
+checkpoint = "seq3.full_-valid"
 # checkpoint = "seq3.full"
 seed = 1
 device = "cpu"
@@ -22,7 +23,7 @@ if torch.cuda.is_available():
 # out_file = os.path.join(DATA_DIR, "gigaword/test_1951/preds.txt")
 
 # src_file = os.path.join(DATA_DIR, "gigaword/test_1951/input_min8.txt")
-src_file = os.path.join(DATA_DIR, "infer.src")
+src_file = os.path.join(DATA_DIR, "eval.src")
 # src_file = os.path.join(DATA_DIR, "gigaword/dev/valid.src.small.txt")
 # src_file = os.path.join(BASE_DIR, "evaluation/DUC2003/input.txt")
 # src_file = os.path.join(BASE_DIR, "evaluation/DUC2004/input.txt")

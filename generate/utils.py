@@ -77,8 +77,8 @@ def compress_seq3(path, checkpoint, src_file, out_file,
                 (inp_src, out_src, inp_trg, out_trg,
                  src_lengths, trg_lengths) = batch
 
-                max_ratio = 0.5
-                trg_lengths = torch.clamp(src_lengths * max_ratio, min=src_lengths.min().item() * max_ratio, max=30) + 1
+                max_ratio = 0.2
+                trg_lengths = torch.clamp(src_lengths * max_ratio, min=9, max=30) + 1
                 trg_lengths = torch.floor(trg_lengths)
 
                 #############################################################
@@ -92,12 +92,19 @@ def compress_seq3(path, checkpoint, src_file, out_file,
                     outputs = model(inp_src, inp_trg, src_lengths, trg_lengths,
                                     sampling=0, mask_matrix=mask_matrix, vocab=vocab, region=region)
                     enc1, dec1, enc2, dec2 = outputs
-                    loss, _ = get_sed_loss(vocab, region, inp_src, dec1)
-                    batch_eval_loss.append(loss)
+
                     if mode == "debug":
 
-                        src = id2txt(inp_src, vocab)
-                        latent = id2txt(dec1[3].max(-1)[1], vocab)
+                        # src = id2txt(inp_src, vocab)
+                        comp = dec1[3].max(-1)[1].tolist()
+                        src = inp_src.tolist()
+                        # sort_comp = []
+                        for c, s in zip(comp, src):
+                            c.sort(key=lambda j: s.index(j))
+                            # sort_comp.append(c)
+
+                        # latent = id2txt(dec1[3].max(-1)[1], vocab)
+                        latent = id2txt(torch.tensor(comp).to(device), vocab)
                         rec = id2txt(dec2[0].max(-1)[1], vocab)
 
                         def lit2str(a):
@@ -109,10 +116,11 @@ def compress_seq3(path, checkpoint, src_file, out_file,
 
                         ratio = [lit2str(seq) for seq in model.idf(inp_src)]
 
-                        _results = list(zip(src, latent, rec, ratio))
-
+                        # _results = list(zip(src, latent))
+                        _results = list(latent)
                         for sample in _results:
-                            f.write("\n".join(sample) + "\n\n")
+                            f.write(sample + "\n")
+                            # f.write("\n".join(sample) + "\n\n")
 
                     elif mode == "attention":
                         src = devect(inp_src, None, strip_eos=False, vocab=vocab, pp=False)
@@ -138,7 +146,6 @@ def compress_seq3(path, checkpoint, src_file, out_file,
 
                     for sample in preds:
                         f.write(sample + "\n")
-    print("batch eval loss: ", np.mean(batch_eval_loss))
     return results
 
 
