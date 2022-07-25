@@ -15,7 +15,7 @@ def adp_min_size(points, epi, st, en, mode):
     max_err = -1
     idx = -1
     for i in range(st + 1, en):
-        err = getDistance(None, points[i], points[st], points[en], mode)
+        err = getDistance(None, (points[i],i), (points[st],st), (points[en],en), mode)
         if err > max_err:
             idx = i
             max_err = err

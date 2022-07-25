@@ -167,24 +167,27 @@ def module_grad_wrt_loss(optimizers, module, loss, prefix=None):
 
 def getDistance(region, p, start, end, mode):
     if region == None:
-        x, y = p
-        st_x, st_y = start
-        en_x, en_y = end
+        (x, y),p_time = p
+        (st_x, st_y),st_time = start
+        (en_x, en_y),en_time = end
     else:
-        x, y = cell2gps(region, int(p))
-        st_x, st_y = cell2gps(region, int(start))
-        en_x, en_y = cell2gps(region, int(end))
+        x, y = cell2gps(region, int(p[0]))
+        st_x, st_y = cell2gps(region, int(start[0]))
+        en_x, en_y = cell2gps(region, int(end[0]))
+        p_time = p[1]
+        st_time = start[1]
+        en_time = end[1]
     #     Ax + By + C = 0
     if mode == "sed":
-        return getSED4GPS((x, y), (st_x, st_y), (en_x, en_y))
+        return getSED4GPS(((x, y),p_time), ((st_x, st_y),st_time), ((en_x, en_y),en_time))
     elif mode == "ped":
         return getPED4GPS((x, y), (st_x, st_y), (en_x, en_y))
 
 
 def getSED4GPS(p, start, end):
-    x, y = p
-    st_x, st_y = start
-    en_x, en_y = end
+    (x, y),syn_time = p
+    (st_x, st_y),st_time = start
+    (en_x, en_y),en_time = end
 
     # SED
     # if st_x == en_x:
@@ -194,10 +197,12 @@ def getSED4GPS(p, start, end):
     # sp_y = k * x + b
     # return abs(sp_y - y)
     # more formal way
-    mid_x = (st_x + en_x) / 2
-    mid_y = (st_y + en_y) / 2
-    dx = x - mid_x
-    dy = y - mid_y
+    time_ratio = 1 if (st_time - en_time) == 0 else (syn_time - st_time) / (en_time - st_time)
+    syn_x = st_x + (en_x - st_x) * time_ratio
+    syn_y = st_y + (en_y - st_y) * time_ratio
+
+    dx = x - syn_x
+    dy = y - syn_y
     return math.sqrt(dx * dx + dy * dy)
 
 
@@ -238,7 +243,7 @@ def SEDsimilarity(region, src, trg, mode):
                     f += 1
                     continue
                 in_ = src[f]
-                dis = getDistance(region, int(in_), int(st), int(en), mode)
+                dis = getDistance(region, (int(in_),src.index(in_)), (int(st),src.index(st)), (int(en),src.index(en)), mode)
                 maxSED = max(maxSED, dis)
                 f += 1
     if maxSED == -1:
@@ -299,7 +304,7 @@ def getMaxError(st, en, points, mode):
         if mode == 'ped':
             err = getPED4GPS(points[i], points[st], points[en])
         elif mode == 'sed':
-            err = getSED4GPS(points[i], points[st], points[en])
+            err = getSED4GPS((points[i],i), (points[st],st), (points[en],en))
         if maxErr < err:
             maxErr = err
             idx = i
@@ -349,37 +354,38 @@ def adp(points, max_len, mode):
 
 # squish压缩算法
 def squish(points, max_buffer_size):
-    buffer = []
-    # 坐标、err、下标
-    buffer.append([points[0], 0, 0])
-    max_err = 0
-    if max_buffer_size > 2:
-        for i in range(1, len(points)):
-            buffer.append([points[i], 0, i])
-            if len(buffer) <= 2:
-                continue
-            segment_start = buffer[-3][0]
-            segment_end = buffer[-1][0]
-            buffer[-2][1] += getSED4GPS(buffer[-2][0], segment_start, segment_end)
-            if len(buffer) > max_buffer_size:
-                to_remove = len(buffer) - 2
-                for j in range(1, len(buffer) - 1):
-                    if buffer[j][1] < buffer[to_remove][1]:
-                        to_remove = j
-                buffer[to_remove - 1][1] += buffer[to_remove][1]
-                buffer[to_remove + 1][1] += buffer[to_remove][1]
-                err = getSED4GPS(buffer[to_remove][0], buffer[to_remove - 1][0], buffer[to_remove + 1][0])
-                max_err = max(max_err, err)
-                buffer.pop(to_remove)
-    else:
-        buffer.append([points[-1], 0, len(points) - 1])
-        segment_start = buffer[0][0]
-        segment_end = buffer[-1][0]
-        for i in range(1, len(points) - 1):
-            max_err = max(max_err, getSED4GPS(points[i], segment_start, segment_end))
-    idx = [p[2] for p in buffer]
-    pp = [p[2] for p in buffer]
-    return pp, idx, max_err
+    pass
+    # buffer = []
+    # # 坐标、err、下标
+    # buffer.append([points[0], 0, 0])
+    # max_err = 0
+    # if max_buffer_size > 2:
+    #     for i in range(1, len(points)):
+    #         buffer.append([points[i], 0, i])
+    #         if len(buffer) <= 2:
+    #             continue
+    #         segment_start = buffer[-3][0]
+    #         segment_end = buffer[-1][0]
+    #         buffer[-2][1] += getSED4GPS(buffer[-2][0], segment_start, segment_end)
+    #         if len(buffer) > max_buffer_size:
+    #             to_remove = len(buffer) - 2
+    #             for j in range(1, len(buffer) - 1):
+    #                 if buffer[j][1] < buffer[to_remove][1]:
+    #                     to_remove = j
+    #             buffer[to_remove - 1][1] += buffer[to_remove][1]
+    #             buffer[to_remove + 1][1] += buffer[to_remove][1]
+    #             err = getSED4GPS(buffer[to_remove][0], buffer[to_remove - 1][0], buffer[to_remove + 1][0])
+    #             max_err = max(max_err, err)
+    #             buffer.pop(to_remove)
+    # else:
+    #     buffer.append([points[-1], 0, len(points) - 1])
+    #     segment_start = buffer[0][0]
+    #     segment_end = buffer[-1][0]
+    #     for i in range(1, len(points) - 1):
+    #         max_err = max(max_err, getSED4GPS(points[i], segment_start, segment_end))
+    # idx = [p[2] for p in buffer]
+    # pp = [p[2] for p in buffer]
+    # return pp, idx, max_err
 
 
 def calculate_error(points, seg1, seg2, mode):
@@ -391,7 +397,7 @@ def calculate_error(points, seg1, seg2, mode):
         if mode == 'ped':
             max_err = max(max_err, getPED4GPS(p, st, en))
         elif mode == 'sed':
-            max_err = max(max_err, getSED4GPS(p, st, en))
+            max_err = max(max_err, getSED4GPS((p,i), (st,seg1[0]), (en,seg2[-1])))
     return max_err
 
 
@@ -485,45 +491,46 @@ def id2gps(region, trj):
 
 
 def getErr(region, vocab, inp_src, seqs, cur, mode):
-    res = []
-
-    def deal(p):
-        return int(vocab.id2tok[src[p].item()])
-
-    for seq, src in zip(seqs, inp_src):
-        p = seq[cur - 1]
-        # 1.选到了轨迹外的点，也无共享，直接为-1 2.选到了之前选过的节点，那么这个节点对于整个轨迹的误差减少没有任何贡献，直接为-1
-        if p == -1 or src[p] == 0:
-            res.append(-1)
-            continue
-        # 最小的
-        st_value = 100
-        st = -1
-        # 第二小的
-        en_value = 100
-        en = -1
-        for i in range(0, cur - 1):
-            if seq[i] == -1 or seq[i] == p:
-                continue
-            if abs(p - seq[i]) < st_value:
-                if st_value < en_value:
-                    en_value = st_value
-                    en = st
-                st_value = abs(p - seq[i])
-                st = i
-            elif seq[i] == seq[st]:
-                continue
-            elif abs(p - seq[i]) < en_value:
-                en_value = abs(p - seq[i])
-                en = i
-        try:
-            st = seq[st]
-            en = seq[en]
-            res.append(
-                getDistance(region, vocab.id2tok[src[p].item()], vocab.id2tok[src[st].item()],
-                            vocab.id2tok[src[en].item()], mode))
-        except Exception as e:
-            print(seq)
-            print(src)
-            res.append(-1)
-    return res
+    pass
+#     res = []
+#
+#     def deal(p):
+#         return int(vocab.id2tok[src[p].item()])
+#
+#     for seq, src in zip(seqs, inp_src):
+#         p = seq[cur - 1]
+#         # 1.选到了轨迹外的点，也无共享，直接为-1 2.选到了之前选过的节点，那么这个节点对于整个轨迹的误差减少没有任何贡献，直接为-1
+#         if p == -1 or src[p] == 0:
+#             res.append(-1)
+#             continue
+#         # 最小的
+#         st_value = 100
+#         st = -1
+#         # 第二小的
+#         en_value = 100
+#         en = -1
+#         for i in range(0, cur - 1):
+#             if seq[i] == -1 or seq[i] == p:
+#                 continue
+#             if abs(p - seq[i]) < st_value:
+#                 if st_value < en_value:
+#                     en_value = st_value
+#                     en = st
+#                 st_value = abs(p - seq[i])
+#                 st = i
+#             elif seq[i] == seq[st]:
+#                 continue
+#             elif abs(p - seq[i]) < en_value:
+#                 en_value = abs(p - seq[i])
+#                 en = i
+#         try:
+#             st = seq[st]
+#             en = seq[en]
+#             res.append(
+#                 getDistance(region, vocab.id2tok[src[p].item()], vocab.id2tok[src[st].item()],
+#                             vocab.id2tok[src[en].item()], mode))
+#         except Exception as e:
+#             print(seq)
+#             print(src)
+#             res.append(-1)
+#     return res

@@ -141,7 +141,7 @@ def sed_loss(region, src, trg, mode):
                     f += 1
                     continue
                 in_ = src[f]
-                dis = getDistance(region, int(in_), int(st), int(en), mode)
+                dis = getDistance(region, (int(in_),src.index(in_)), (int(st),src.index(st)), (int(en),src.index(en)), mode)
                 maxSED = max(maxSED, dis)
                 f += 1
     if maxSED == -1:

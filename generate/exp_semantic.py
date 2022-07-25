@@ -394,7 +394,7 @@ RL = PolicyGradient(env.n_features, env.n_actions)
 RL.load('../RL/save/0.00039190653824900003_ratio_0.1/')  # your_trained_model your_trained_model_skip
 
 # --------------------------------------------------------------------
-with open(f"../experiments/result_{checkpoint}_{metric}_{datasets}", "w") as f:
+with open(f"../experiments/result_{checkpoint}_{metric}_{datasets}", "a") as f:
     # 1-5对应90%-50%的压缩率
     range_ = range(1, 6)
     for ratio in range_:
