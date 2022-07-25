@@ -49,6 +49,7 @@ class TrajComp():
         self.err_seg = {}
         self.err_record = {}
         steps = len(self.ori_traj_set[episode])
+        # print("RL: \n", self.ori_traj_set[episode])
         self.F_ward = {}  # save (state_value, next_point)
         self.B_ward = {}  # save (state_value, last_point)
         self.F_ward[0] = [0.0, 1]

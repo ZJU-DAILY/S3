@@ -187,12 +187,19 @@ def getSED4GPS(p, start, end):
     en_x, en_y = end
 
     # SED
-    if st_x == en_x:
-        return abs(x - st_x)
-    k = (st_y - en_y) / (st_x - en_x)
-    b = en_y - k * en_x
-    sp_y = k * x + b
-    return abs(sp_y - y)
+    # if st_x == en_x:
+    #     return abs(x - st_x)
+    # k = (st_y - en_y) / (st_x - en_x)
+    # b = en_y - k * en_x
+    # sp_y = k * x + b
+    # return abs(sp_y - y)
+    # more formal way
+    mid_x = (st_x + en_x) / 2
+    mid_y = (st_y + en_y) / 2
+    dx = x - mid_x
+    dy = y - mid_y
+    return math.sqrt(dx * dx + dy * dy)
+
 
 
 def getPED4GPS(p, start, end):

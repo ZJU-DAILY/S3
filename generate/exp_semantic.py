@@ -47,6 +47,8 @@ def RL_algorithm(buffer_size, episode):
         observation_, _ = env.step(episode, action, index, done, 'V')  # 'T' means Training, and 'V' means Validation
         observation = observation_
     idx, max_err = env.output(episode, 'V')
+    if idx[-1] == steps:
+        idx, max_err = env.output(episode, 'V')
     return idx, max_err
 
 def sematic_cal(model, inp, dec1, src_lengths, trg_lengths, vocab):
@@ -196,7 +198,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
     iterator = enumerate(data_loader, 1)
     time_list = []
     rollback_time_list = []
-
+    ik = 0
     with torch.no_grad():
         for i, batch in iterator:
             print(f"batch {i}")
@@ -218,13 +220,14 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
 
             enc1, dec1, enc2, dec2 = outputs
 
-            ik = 0
+
             for src_vid, _src_len, comp_vid, _trg_len in zip(inp_src, src_lengths, dec1[3].max(-1)[1], trg_lengths):
 
                 comp_vid = comp_vid[:_trg_len].tolist()
                 if 0 in comp_vid:
                     print("comp_vid has zero,so we rollback...")
                     # time_list = rollback_time_list
+                    ik += 1
                     continue
                 src_vid = src_vid[:_src_len]
                 complen = len(comp_vid)
@@ -234,6 +237,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                 try:
                     # points = [cell2meters(region, int(p)) for p in src_vid]
                     points = [cell2gps(region, int(p)) for p in src_gid]
+                    # print("Our: \n",points)
                     # Tea
                     if metric == "ss":
                         s_loss_seq3 = sematic_simp(model, src_vid, comp_vid, vocab)
@@ -252,6 +256,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                 except Exception as e:
                     print("exception occured")
                     # time_list = rollback_time_list
+                    ik += 1
                     continue
                 # time_seq3 += time_list[ik]
                 batch_eval_metric_loss_seq3.append(s_loss_seq3)
@@ -389,7 +394,7 @@ RL = PolicyGradient(env.n_features, env.n_actions)
 RL.load('../RL/save/0.00039190653824900003_ratio_0.1/')  # your_trained_model your_trained_model_skip
 
 # --------------------------------------------------------------------
-with open(f"../experiments/result_{checkpoint}_{metric}", "w") as f:
+with open(f"../experiments/result_{checkpoint}_{metric}_{datasets}", "w") as f:
     # 1-5对应90%-50%的压缩率
     range_ = range(1, 6)
     for ratio in range_:
