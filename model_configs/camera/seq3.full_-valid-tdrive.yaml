@@ -1,0 +1,150 @@
+checkpoint_interval: 5000 # how often (batches) to save a checkpoint
+eval_interval: 150        # 100 how often (batches) to evaluate the model on the dev set. Note: eval_interval need to be smaller than train_data_size / batch_size (batch number in one epoch)
+#eval_interval: 10
+log_interval: 50          # how often (batches) to log the training process to console
+batch_size: 20           # size of a batch-128
+#batch_size: 20
+epochs: 20                # number of epochs.default-5
+num_workers: 0
+
+plot_norms: False  # Plot the gradient norms of each loss wrt to the compressor
+
+lr: 0.001        # Learning rate of the optimizer
+weight_decay: 0.  # Weight decay value of the optimizer
+
+# The checkpoint of the pretrained LM to be used as prior.
+# Use only the prefix of the file (without .pt)
+#prior: lm_giga_articles_all_10K
+prior:
+
+data:
+  base_dir: ../../datasets/tdrive
+  train_path: train.src # path to the training data (only source!!!)
+  val_path: val.src  # path to the source validation data
+  ref_path: eval.src    # path to the target development data (验证集，dev set)
+
+  seq_len: 50   # maximum length of source texts
+  oovs: 10      # number of special OOV tokens (www.aclweb.org/anthology/K18-1040)
+  swaps: 0.0    # percentage of local token swaps to the source text
+
+vocab:
+#  embeddings: glove.6B.100d.txt # pretrained word embeddings file
+  embeddings_dim: 100           # pretrained word embeddings dimensionality
+  size: 15000                   # size of the vocabulary. Top-N frequent words.
+
+model:
+  clip: 1       # value of clipping the norms of the gradients
+  pack: True    # use packed_sequences
+
+  ################################################
+  # LOSSES
+  ################################################
+
+  # Annealing: If you want to anneal the value of a hyper-parameter,
+  # you can do so, by replacing the value with a list: [from, to].
+  # For example, to anneal the value of the weight of the prior:
+  # loss_weight_prior: [0.001, 0.5]
+  # Note that the starting value cannot be zero.
+
+
+  #------------------------------------
+  # Reconstruction
+  #------------------------------------
+  loss_weight_reconstruction: 1   # weight of the reconstruction loss - λ_R
+
+  #------------------------------------
+  # Prior
+  #------------------------------------
+  prior_loss: False                # enable/disable the prior loss
+  loss_weight_prior: 0.1          # weight of the prior loss - λ_P
+
+  #------------------------------------
+  # Local Topic
+  #------------------------------------
+  local_topic_loss: False                # enable/disable the prior loss
+  loss_weight_local_topic: 2            # weight of the prior loss - λ_T
+  # 度量两个向量的距离：1.余弦相似度（计算夹角） 2.欧氏距离（计算点的距离）那么欧式距离小 -> 夹角小，但是夹角小不一定能保证欧氏距离小。我们这里需要更苛刻的条件。
+  local_topic_distance: euclidean          # distance metric for topic loss. Options: cosine, euclidean
+
+  #------------------------------------
+  # Topic
+  #------------------------------------
+  topic_loss: True                # enable/disable the prior loss
+  loss_weight_topic: 1            # weight of the prior loss - λ_T
+  topic_idf: True                 # weight the input embeddings by their IDF
+  topic_distance: cosine          # distance metric for topic loss. Options: cosine, euclidean
+
+  #------------------------------------
+  # Length
+  #------------------------------------
+  length_loss: False               # enable/disable the length loss
+  loss_weight_length: 0.01        # weight of the prior loss - λ_L
+
+  #------------------------------------
+  # neo: Penalty for noise and repetitive token problem
+  #------------------------------------
+  neo_loss: False               # enable/disable the length loss
+  loss_weight_neo: 10        # weight of the prior loss - λ_L
+
+  ################################################
+  # SUMMARY LENGTHS
+  ################################################
+  min_ratio: 0.2          # min % of the sampled summary lengths
+  max_ratio: 0.6          # max % of the sampled summary lengths
+  min_length: 15           # absolute min length (words) of the sampled summary length
+  max_length: 30          # absolute max length (words) of the sampled summary length
+  test_min_ratio: 0.3     # same as above but for inference
+  test_max_ratio: 0.31    # same as above but for inference
+  test_min_length: 9      # same as above but for inference
+  test_max_length: 15     # same as above but for inference
+
+  ################################################
+  # PARAMETER SHARING
+  ################################################
+  tie_decoder_outputs: True     # tie the output layers of both decoders (projections to vocab)
+  tie_embedding_outputs: True   # 将嵌入层和decoder的输出层绑定。tie the embedding and output layers of both decoders
+  tie_embedding: True           # tie all the embedding layers together
+  tie_decoders: False           # tie the decoders of the compressor and reconstructor
+  tie_encoders: True            # tie the encoders of the compressor and reconstructor
+
+  ################################################
+  # INIT DECODER
+  ################################################
+  length_control: True          # If true, use the countdown parameter for the decoders,
+                                # as well as the target length-aware initialization for each decoder
+  err_control: False
+  bridge_hidden: True           # use a bridge layer (hidden) between the last layer of the encoder and the initial state of the decoder
+  bridge_non_linearity: tanh    # apply a non-linearity to the bridge layer. Options: tanh, relu
+
+  emb_size: 100               # the size of the embedding layer(s)
+  embed_dropout: 0.0          # dropout probability for the embedding layer(s)
+  embed_trainable: True       # Finetune the embeddings
+  embed_masked: False         # Finetune the only the words not included in the pretrained embeddings.
+  layer_norm: True            # Apply layer normalization to the outputs of the decoders
+  gnn_used: True
+  gnn_latent_dim: 128
+  enc_token_dropout: 0.0      # % of words to drop from the input
+  dec_token_dropout: 0.5      # % of words to drop from the reconstruction
+  enc_rnn_size: 300           # the size of the encoder(s)
+  dec_rnn_size: 300           # the size of the decoder(s)
+  rnn_layers: 2               # number of layers for encoders and decoders
+  rnn_dropout: 0.0            # dropout probability for the outputs of each RNN
+  rnn_type: LSTM
+  rnn_bidirectional: True     # Use bidirectional encoder(s)
+  attention: True             # Use attentional seq2seq. False not implemented!
+  attention_fn: general       # The attention function. Options: general, additive, concat
+  attention_coverage: True   # Include a coverage vector to the attention mechanism
+  input_feeding: True         # Use input feeding (Luong et. al. 2015)
+  input_feeding_learnt: True  # Learn the first value of the input feed
+  out_non_linearity: tanh     # Apply a non-linearity to the output vector (before projection to vocab)
+
+  sampling: 0.0     # Probability of schedule-sampling to the reconstructor
+  top: False        # Use argmax for sampling in the latent sequence. True not implemented!
+  hard: False        # Use Straight-Through, i.e., discretize the output distributions in the forwards pass
+  gumbel: False      # Use Gumbel-Softmax instead of softmax in the latent sequence-true
+  tau: 0.5          # Temperature of the distributions in the latent sequence
+  learn_tau: True  # 为消除重复token做出了主要贡献。Learn the value of the temperature, as function of the output of the decoder(s)
+  tau_0: 0.5        # Hyper-parameter that controls the upper-bound of the temperature.
+  mask: True
+  mask_fn: trj      #option: area or trj.
+  metric: ss

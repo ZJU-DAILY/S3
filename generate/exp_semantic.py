@@ -193,6 +193,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
     time_btup = 0
     time_error_search = 0
     time_RL = 0
+    time_res = ""
 
 
     iterator = enumerate(data_loader, 1)
@@ -326,6 +327,9 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                     s_loss_rl = maxErr
                 batch_eval_metric_loss_RL.append(s_loss_rl)
                 ik += 1
+            if (i + 1) % 10 == 0:
+                time_res += f"Tea {np.sum(time_list)} tdtr {time_adp} errSea {time_error_search} btup {time_btup} rl {time_RL} \n"
+
             # batch_eval_loss.append(np.mean(loss))
 
     # print(f"压缩率 {max_ratio},耗时 {time_sum},误差 {np.mean(batch_eval_loss)},关键程度 {np.mean(key_info)},语义相似度 {np.mean(batch_eval_semantic_loss_seq3)},失真 {np.mean(delta)}")
@@ -340,7 +344,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
           f"Error Search\t|\t推理用时:\t{time_error_search}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_error_search)}\n" \
           f"Bottom up\t|\t推理用时:\t{time_btup} |\t{metric}:\t{np.mean(batch_eval_metric_loss_btup)}\n" \
           f"RL\t|\t推理用时:\t{time_RL} |\t{metric}:\t{np.mean(batch_eval_metric_loss_RL)}\n"
-    return res
+    return time_res + res
 
 
 
@@ -365,11 +369,11 @@ metric = sys.argv[1]
 datasets = sys.argv[2]
 
 if metric == 'ped':
-    checkpoint = "seq3.full_-ped"
+    checkpoint = "seq3.full_-ped-tdrive"
 elif metric == 'sed':
-    checkpoint = "seq3.full_-sed"
+    checkpoint = "seq3.full_-sed-tdrive"
 elif metric == 'ss':
-    checkpoint = "seq3.full_-valid"
+    checkpoint = "seq3.full_-valid-tdrive"
 
 src_file = os.path.join(DATA_DIR, datasets + ".src")
 with open('../preprocess/pickle.txt', 'rb') as f:

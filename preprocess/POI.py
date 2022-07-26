@@ -33,10 +33,10 @@ gid2poi = dict()
 dist_all = []
 point = set()
 
-file = ['train.src', 'val.src', 'infer.src']
+file = ['train.src', 'val.src', 'eval.src']
 for _f in file:
     print(_f)
-    with open("../datasets/" + _f, 'r') as f:
+    with open("../datasets/tdrive/" + _f, 'r') as f:
         for trj in f:
             trj = trj.strip("\n")
             trj = trj.split(" ")
@@ -62,4 +62,4 @@ gid2poi = pickle.loads(var_a)
 # print(gid2poi['178794'])
 
 print(np.mean(dist_all),f"gid2poi size: {len(gid2poi)}, the number of points: {len(point)}")
-print(f"请手动更新一下zero_poi的值为{len(gid2poi)}")
+# print(f"请手动更新一下zero_poi的值为{len(gid2poi)}")
