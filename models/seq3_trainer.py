@@ -454,6 +454,7 @@ class Seq3Trainer(Trainer):
                     # 2 - Semantic metric
                     # --------------------------------------------------------------
                     loss_semantic += self._sematic_loss(inp_src, dec, src_lengths, latent_lengths, vocab)
+                # else:
 
 
                 # s_loss_ = 0

@@ -4,11 +4,19 @@
 # @FileName: POI.py
 # @Desc: description
 # @blogs ：https://segmentfault.com/u/alec_5e8962e4635ca
+import os
+import sys
+
+
+sys.path.append('/home/hch/Desktop/trjcompress/preprocess/')
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import csv
 import pickle
 from sklearn.neighbors import KDTree
 import numpy as np
 from preprocess.SpatialRegionTools import cell2gps
+
 
 # 可以在这里预处理每一个GPS点对应的poi点，那么就可以获取一条原始轨迹和一条poi轨迹
 # 具体规则如下：设定一个e代表阈值，若GPS点最近的poi点的距离小于e，那么可用当前poi点进行表示。否则，则用unk（id为0）表示。
@@ -37,11 +45,20 @@ file = ['train.src', 'val.src', 'eval.src']
 for _f in file:
     print(_f)
     with open("../datasets/tdrive/" + _f, 'r') as f:
+        i = 0
         for trj in f:
+            # print(i)
+            i += 1
+            # print(trj)
             trj = trj.strip("\n")
             trj = trj.split(" ")
             for p in trj:
-                p = int(p)
+                # p = p.strip("\n")
+                try:
+                    p = int(p)
+                except Exception as e:
+                    print()
+                    continue
                 point.add(p)
                 x, y = cell2gps(region, p)
                 dists, idxs = tree.query(np.array([[x, y]]), 1)

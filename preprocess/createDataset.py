@@ -1,3 +1,9 @@
+import os
+import sys
+
+
+sys.path.append('/home/hch/Desktop/trjcompress/')
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pickle
 
 from preprocess.SpatialRegionTools import trip2seq, str2trip, seq2str, createVocab_save
@@ -5,7 +11,8 @@ from preprocess.SpatialRegionTools import trip2seq, str2trip, seq2str, createVoc
 
 # todo 完成数据集的重新生成
 def createTrainVal(region, trjfile,
-                   ntrain=3600, nval=1200, neval=1200,
+                   # 60%,20%,20%
+                   ntrain=20000, nval=6000, neval=1000,
                    min_length=30, max_length=50):
     # seq2str(seq) = join(map(string, seq), " ") * "\n"
 
