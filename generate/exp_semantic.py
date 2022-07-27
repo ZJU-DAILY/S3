@@ -35,6 +35,7 @@ from generate.error_search import error_search_algorithm
 
 from RL.rl_env_inc import TrajComp
 from RL.rl_brain import PolicyGradient
+# import torch_tensorrt
 
 def RL_algorithm(buffer_size, episode):
     steps, observation = env.reset(episode, buffer_size)
@@ -163,6 +164,10 @@ def load_model(path, checkpoint, src_file, device):
     n_tokens = len(dataset.vocab)
 
     model = Seq2Seq2Seq(n_tokens, **config["model"]).to(device)
+    # trt_model = torch_tensorrt.compile(model,
+    #                                    inputs=[torch_tensorrt.Input((1, 3, 224, 224))],
+    #                                    enabled_precisions={torch_tensorrt.dtype.half}  # Run with FP16
+    #                                    )
     model.load_state_dict(checkpoint["model"])
     model.eval()
 

@@ -15,29 +15,29 @@ import math
 import pickle
 
 
-def plotTest(region):
-    with open("../datasets/eval.src", "r") as f:
+def plotTest(region,name):
+    with open(f"../datasets/tdrive/{name}.src", "r") as f:
         ss = f.readlines()
     x = []
     y = []
 
-    minlon, minlat = lonlat2meters(115.7001, 39.4)
-    maxlon, maxlat = lonlat2meters(117.39994, 41.59471)
-    x.append(minlon)
-    x.append(maxlon)
-    y.append(minlat)
-    y.append(maxlat)
+    # minlon, minlat = (115.7001, 39.4)
+    # maxlon, maxlat = (117.39994, 41.59471)
+    # x.append(minlon)
+    # x.append(maxlon)
+    # y.append(minlat)
+    # y.append(maxlat)
     for s in ss:
         trj = s.split(" ")
         for p in trj:
             if p != '':
                 lon, lat = cell2gps(region, int(p))
-                x_, y_ = lonlat2meters(lon, lat)
+                x_, y_ = (lon, lat)
                 x.append(x_), y.append(y_)
     print(len(ss))
     plt.scatter(x, y, color='r')
     plt.grid(True)
-    plt.savefig('test_eval.png')
+    plt.savefig(f'test_{name}.png')
     plt.close()
 
 
@@ -68,4 +68,7 @@ with open('../datasets/gid2poi.txt', 'rb') as f:
 gl_gid2poi = pickle.loads(var_a)
 
 # case(region, gl_gid2poi, '../datasets/eval.src', 'gps.txt')
-case(region, gl_gid2poi, '../evaluation/seq3.full_-valid_preds.txt', 'gps_comp.txt')
+# case(region, gl_gid2poi, '../evaluation/seq3.full_-valid_preds.txt', 'gps_comp.txt')
+plotTest(region,'train')
+plotTest(region,'val')
+plotTest(region,'eval')
