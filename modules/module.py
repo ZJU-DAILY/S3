@@ -778,7 +778,7 @@ class AttSeqDecoder(nn.Module):
             #         ec = torch.tensor(err).to(e_i)
             #         ec = ec.view(batch, 1, 1)
             #         ec = ec * self.W_err
-
+            attn_coverage = None
             if self.coverage:
                 if len(attentions) == 0:
                     attn_coverage = torch.zeros([enc_outputs.size(0), enc_outputs.size(1)]).to(e_i)

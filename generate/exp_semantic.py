@@ -376,7 +376,8 @@ datasets = sys.argv[2]
 if metric == 'ped':
     checkpoint = "seq3.full_-ped-tdrive"
 elif metric == 'sed':
-    checkpoint = "seq3.full_-sed-tdrive"
+    # checkpoint = "seq3.full_-sed-tdrive"
+    checkpoint = "seq3.full_-noAttn"
 elif metric == 'ss':
     checkpoint = "seq3.full_-valid-tdrive"
 
