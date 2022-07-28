@@ -17,7 +17,7 @@ TRAINED_PATH = os.path.join(BASE_DIR, "checkpoints")
 
 EMBS_PATH = os.path.join(BASE_DIR, "embeddings")
 
-DATA_DIR = os.path.join(BASE_DIR, 'datasets/tdrive')
+DATA_DIR = os.path.join(BASE_DIR, 'datasets/')
 
 EXP_DIR = os.path.join(BASE_DIR, 'experiments')
 

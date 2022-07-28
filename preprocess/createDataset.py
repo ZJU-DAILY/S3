@@ -12,15 +12,15 @@ from preprocess.SpatialRegionTools import trip2seq, str2trip, seq2str, createVoc
 # todo 完成数据集的重新生成
 def createTrainVal(region, trjfile,
                    # 60%,20%,20%
-                   ntrain=20000, nval=6000, neval=1000,
-                   min_length=30, max_length=50):
+                   ntrain=0, nval=0, neval=1000,
+                   min_length=400, max_length=512):
     # seq2str(seq) = join(map(string, seq), " ") * "\n"
 
     with open(trjfile, "r") as f:
         ss = f.readlines()
-        trainsrc = open("../datasets/tdrive/train.src", "w")
-        validsrc = open("../datasets/tdrive/val.src", "w")
-        evalsrc = open("../datasets/tdrive/eval.src", "w")
+        trainsrc = open("../datasets/train.src", "w")
+        validsrc = open("../datasets/val.src", "w")
+        evalsrc = open("../datasets/eval.src", "w")
         cnt = 1
         sum_ = 0
 
@@ -45,6 +45,8 @@ def createTrainVal(region, trjfile,
                 #     print()
                 if not (min_length <= leng <= max_length):
                     continue
+                # trg_str = [str(k) for k in trg]
+                # trg_str = " ".join(trg_str)
                 sum_ += 1
                 trg_str = trg_str.strip(" ")
                 trg_str = trg_str.strip("\n")
@@ -66,7 +68,7 @@ def createTrainVal(region, trjfile,
                 print("Scaned ", i, " trips...")
         trainsrc.close(), validsrc.close(), evalsrc.close()
     print(sum_)
-path = "../datasets/tdrive/t-drive.pos"
+path = "../datasets/beijing.pos"
 # path = "../datasets/porto.pos"
 # createVocab_save(path)
 with open('pickle.txt', 'rb') as f:

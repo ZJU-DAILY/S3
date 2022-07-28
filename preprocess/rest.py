@@ -8,6 +8,7 @@ import numpy as np
 from sklearn.neighbors import KDTree
 import matplotlib as mpl
 from modules.helpers import getDistance, getCompress
+import os
 
 mpl.use('Agg')
 from matplotlib import pyplot as plt
@@ -57,6 +58,24 @@ def case(region, gl_gid2poi, src_file, out_file):
     with open(f"./{out_file}", "w") as f:
         f.write(res)
 
+def rl_data(base_dir,region,src_file):
+    with open(src_file, "r") as f:
+        ss = f.readlines()
+    trj_length = []
+    for k, s in enumerate(ss):
+        trj = s.strip('\n').split(" ")
+        trj_length.append(len(trj))
+        i = 0
+        res = ""
+        for p in trj:
+            if p != '':
+                lon, lat = cell2gps(region, int(p))
+                res += str(lon) + " " + str(lat) + " " + str(i) + '\n'
+                i = i + 5
+        path = os.path.join(base_dir,str(k))
+        with open(path, "w") as f:
+            f.write(res)
+    print(np.mean(trj_length))
 
 with open('pickle.txt', 'rb') as f:
     var_a = pickle.load(f)
@@ -69,6 +88,8 @@ gl_gid2poi = pickle.loads(var_a)
 
 # case(region, gl_gid2poi, '../datasets/eval.src', 'gps.txt')
 # case(region, gl_gid2poi, '../evaluation/seq3.full_-valid_preds.txt', 'gps_comp.txt')
-plotTest(region,'train')
-plotTest(region,'val')
-plotTest(region,'eval')
+# plotTest(region,'train')
+# plotTest(region,'val')
+# plotTest(region,'eval')
+
+rl_data("/home/hch/RLTS/TrajData/compare",region,"../datasets/eval.src")

@@ -8,7 +8,7 @@ from preprocess.SpatialRegionTools import cell2gps, lonlat2meters, cell2meters
 from sklearn.neighbors import KDTree
 import numpy as np
 import math
-
+from RL.data_utils import angle
 
 def sequence_mask(lengths, max_len=None):
     """
@@ -183,6 +183,29 @@ def getDistance(region, p, start, end, mode):
     elif mode == "ped":
         return getPED4GPS((x, y), (st_x, st_y), (en_x, en_y))
 
+def dad_op(segment):
+    if len(segment) <= 2:
+        # print('segment error', 0.0)
+        return 0.0
+    else:
+        ps = segment[0]
+        pe = segment[-1]
+        e = 0.0
+        theta_0 = angle([ps[0], ps[1], pe[0], pe[1]])
+        for i in range(0, len(segment) - 1):
+            pm_0 = segment[i]
+            pm_1 = segment[i + 1]
+            theta_1 = angle([pm_0[0], pm_0[1], pm_1[0], pm_1[1]])
+            e = max(e, min(abs(theta_0 - theta_1), 2 * math.pi - abs(theta_0 - theta_1)))
+        # print('segment error', e)
+        return e
+
+def getDAD4GPS(p, start, end):
+    x, y = p
+    st_x, st_y = start
+    en_x, en_y = end
+    e = 0.0
+    theta_0 = angle([st_x, st_y, en_x, en_y])
 
 def getSED4GPS(p, start, end):
     (x, y),syn_time = p
@@ -297,6 +320,8 @@ def getCompress(region, src, trg):
 
 
 def getMaxError(st, en, points, mode):
+    if mode == 'dad':
+        return dad_op(points[st:en + 1])
     maxErr = -1
     idx = -1
     err = -1
@@ -310,6 +335,12 @@ def getMaxError(st, en, points, mode):
             idx = i
     return idx, maxErr
 
+if __name__ == '__main__':
+    st = 0
+    en = 4
+    points = [(1,2),(3,5),(2,1),(4,9),(5,7)]
+    err = getMaxError(st,en,points,'dad')
+    print(err)
 
 def getKey_Value(item):
     for it in item.items():

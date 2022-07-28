@@ -143,6 +143,7 @@ def seq2str(seq):
 
 def load_model(path, checkpoint, src_file, device):
     checkpoint = load_checkpoint(checkpoint, path=path)
+    checkpoint['config']['data']['seq_len'] = 1024
     config = checkpoint["config"]
     vocab = checkpoint["vocab"]
 
@@ -214,11 +215,12 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
             (inp_src, out_src, inp_trg, out_trg,
              src_lengths, trg_lengths) = batch
 
-            trg_lengths = torch.clamp(src_lengths * max_ratio, min=9, max=30)
+            trg_lengths = torch.clamp(src_lengths * max_ratio, min=50, max=100)
             trg_lengths = torch.floor(trg_lengths).int()
 
             m_zeros = torch.zeros(inp_src.size(0), vocab.size).to(inp_src)
             mask_matrix = m_zeros.scatter(1, inp_src, 1)
+            mask_matrix[:, 0] = 0
 
             outputs = model(inp_src, inp_trg, src_lengths, trg_lengths,
                             sampling=0, mask_matrix=mask_matrix, vocab=vocab, region=region,
@@ -259,6 +261,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                         # print(src_gid)
                         # print(comp_sort_gid)
                         s_loss_seq3 = sed_loss(region, src_gid, comp_sort_gid, metric)
+                        s_loss_seq3 = 0
                 except Exception as e:
                     print("exception occured")
                     # time_list = rollback_time_list
@@ -377,6 +380,7 @@ if metric == 'ped':
     checkpoint = "seq3.full_-ped-tdrive"
 elif metric == 'sed':
     # checkpoint = "seq3.full_-sed-tdrive"
+    # checkpoint = "seq3.full_-sed"
     checkpoint = "seq3.full_-noAttn"
 elif metric == 'ss':
     checkpoint = "seq3.full_-valid-tdrive"

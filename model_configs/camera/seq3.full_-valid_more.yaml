@@ -1,5 +1,5 @@
 checkpoint_interval: 5000 # how often (batches) to save a checkpoint
-eval_interval: 500        # 100 how often (batches) to evaluate the model on the dev set. Note: eval_interval need to be smaller than train_data_size / batch_size (batch number in one epoch)
+eval_interval: 100        # 100 how often (batches) to evaluate the model on the dev set. Note: eval_interval need to be smaller than train_data_size / batch_size (batch number in one epoch)
 #eval_interval: 10
 log_interval: 50          # how often (batches) to log the training process to console
 batch_size: 20           # size of a batch-128
@@ -18,12 +18,12 @@ weight_decay: 0.  # Weight decay value of the optimizer
 prior:
 
 data:
-  base_dir: ../../datasets/geolife
+  base_dir: ../../datasets
   train_path: train.src # path to the training data (only source!!!)
   val_path: val.src  # path to the source validation data
   ref_path: eval.src    # path to the target development data (验证集，dev set)
 
-  seq_len: 50   # maximum length of source texts
+  seq_len: 1024   # maximum length of source texts
   oovs: 10      # number of special OOV tokens (www.aclweb.org/anthology/K18-1040)
   swaps: 0.0    # percentage of local token swaps to the source text
 
@@ -91,12 +91,12 @@ model:
   ################################################
   min_ratio: 0.2          # min % of the sampled summary lengths
   max_ratio: 0.6          # max % of the sampled summary lengths
-  min_length: 15           # absolute min length (words) of the sampled summary length
-  max_length: 30          # absolute max length (words) of the sampled summary length
-  test_min_ratio: 0.3     # same as above but for inference
-  test_max_ratio: 0.31    # same as above but for inference
-  test_min_length: 9      # same as above but for inference
-  test_max_length: 15     # same as above but for inference
+  min_length: 100           # absolute min length (words) of the sampled summary length
+  max_length: 600          # absolute max length (words) of the sampled summary length
+  test_min_ratio: 0.1     # same as above but for inference
+  test_max_ratio: 0.11    # same as above but for inference
+  test_min_length: 50      # same as above but for inference
+  test_max_length: 100     # same as above but for inference
 
   ################################################
   # PARAMETER SHARING
@@ -131,9 +131,9 @@ model:
   rnn_dropout: 0.0            # dropout probability for the outputs of each RNN
   rnn_type: LSTM
   rnn_bidirectional: True     # Use bidirectional encoder(s)
-  attention: False             # Use attentional seq2seq. False not implemented!
+  attention: True             # Use attentional seq2seq. False not implemented!
   attention_fn: general       # The attention function. Options: general, additive, concat
-  attention_coverage: False   # Include a coverage vector to the attention mechanism
+  attention_coverage: True   # Include a coverage vector to the attention mechanism
   input_feeding: True         # Use input feeding (Luong et. al. 2015)
   input_feeding_learnt: True  # Learn the first value of the input feed
   out_non_linearity: tanh     # Apply a non-linearity to the output vector (before projection to vocab)
