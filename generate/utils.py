@@ -16,6 +16,211 @@ from models.seq3_losses import sed_loss
 from modules.helpers import getCompress
 
 
+def cleanTrj(src):
+    res = []
+    for p in src:
+        if p == '' or p == 'UNK':
+            continue
+        res.append(p)
+    return res
+
+def dad_op(segment):
+    if len(segment) <= 2:
+        # print('segment error', 0.0)
+        return -1, 0.0
+    else:
+        mid = -1
+        ps = segment[0]
+        pe = segment[-1]
+        e = 0.0
+        theta_0 = angle([ps[0], ps[1], pe[0], pe[1]])
+        for i in range(0, len(segment) - 1):
+            pm_0 = segment[i]
+            pm_1 = segment[i + 1]
+            theta_1 = angle([pm_0[0], pm_0[1], pm_1[0], pm_1[1]])
+            tmp = min(abs(theta_0 - theta_1), 2 * math.pi - abs(theta_0 - theta_1))
+            if tmp > e:
+                e = tmp
+                mid = i
+        # print('segment error', e)
+        # if len(segment) == 3:
+        #     mid = 1
+        return mid, e
+
+
+def getSED4GPS(p, start, end):
+    (x, y), syn_time = p
+    (st_x, st_y), st_time = start
+    (en_x, en_y), en_time = end
+
+    # SED
+    # if st_x == en_x:
+    #     return abs(x - st_x)
+    # k = (st_y - en_y) / (st_x - en_x)
+    # b = en_y - k * en_x
+    # sp_y = k * x + b
+    # return abs(sp_y - y)
+    # more formal way
+    time_ratio = 1 if (st_time - en_time) == 0 else (syn_time - st_time) / (en_time - st_time)
+    syn_x = st_x + (en_x - st_x) * time_ratio
+    syn_y = st_y + (en_y - st_y) * time_ratio
+
+    dx = x - syn_x
+    dy = y - syn_y
+    return math.sqrt(dx * dx + dy * dy)
+
+
+def getPED4GPS(p, start, end):
+    x, y = p
+    st_x, st_y = start
+    en_x, en_y = end
+    #     Ax + By + C = 0
+    # PED
+    if en_x == st_x:
+        return abs(x - en_x)
+    A = (en_y - st_y) / (en_x - st_x)
+    B = -1
+    C = st_y - st_x * A
+    return abs(A * x + B * y + C) / math.sqrt(A * A + B * B)
+
+
+def getCompress(region, src, trg):
+    src = cleanTrj(src)
+    trg = cleanTrj(trg)
+
+    epi = 0.05
+    data = np.zeros([len(src), 2])
+    # 给id一个时间顺序
+    mp = {}
+    i = 0
+    for p in src:
+        x, y = cell2gps(region, int(p))
+        data[i, :] = [x, y]
+        mp[int(p)] = i
+        i += 1
+    tree = KDTree(data)
+    # 存放压缩后的轨迹的id
+    resTrj = []
+    trg_x_ori = []
+    trg_y_ori = []
+    for p in trg:
+        x, y = cell2gps(region, int(p))
+        trg_x_ori.append(x)
+        trg_y_ori.append(y)
+        dists, idxs = tree.query(np.array([[x, y]]), 1)
+        if dists[0] > epi:
+            continue
+        id = idxs[0].tolist()[0]
+        if src[id] not in resTrj:
+            resTrj.append(src[id])
+    if src[-1] not in resTrj:
+        resTrj.append(src[-1])
+    resTrj.sort(key=lambda j: mp[int(j)])
+    return resTrj, trg_x_ori, trg_y_ori
+
+
+def getMaxError(st, en, points, mode):
+    if mode == 'dad':
+        mid, e = dad_op(points[st:en + 1])
+        return mid + st, e
+    maxErr = -1
+    idx = -1
+    err = -1
+    for i in range(st, en + 1):
+        if mode == 'ped':
+            err = getPED4GPS(points[i], points[st], points[en])
+        elif mode == 'sed':
+            err = getSED4GPS((points[i], i), (points[st], st), (points[en], en))
+        if maxErr < err:
+            maxErr = err
+            idx = i
+    return idx, maxErr
+
+
+def calculate_error(points, seg1, seg2, mode):
+    st = points[seg1[0]]
+    en = points[seg2[-1]]
+    max_err = -1
+    if mode == 'dad':
+        return getMaxError(seg1[0], seg2[-1], points, mode)[1]
+    for i in range(seg1[0] + 1, seg2[-1]):
+        p = points[i]
+        if mode == 'ped':
+            max_err = max(max_err, getPED4GPS(p, st, en))
+        elif mode == 'sed':
+            max_err = max(max_err, getSED4GPS((p, i), (st, seg1[0]), (en, seg2[-1])))
+    return max_err
+
+def getKey_Value(item):
+    for it in item.items():
+        return it[0], it[1]
+
+
+def cmp(a, b):
+    (_, _), (_, maxErr_a) = getKey_Value(a)
+    (_, _), (_, maxErr_b) = getKey_Value(b)
+    return maxErr_a - maxErr_b
+
+
+def swap(points, i, j):
+    tmp = points[i]
+    points[i] = points[j]
+    points[j] = tmp
+
+
+def id2gps(region, trj):
+    points = []
+    for p in trj:
+        x, y = cell2gps(region, int(p))
+        points.append([x, y])
+    return points
+
+def get_out(R, st, en, res):
+    if st + 1 >= en or R[st][en] == -1:
+        return []
+    sp = R[st][en]
+    left = get_out(R, st, sp, res)
+    right = get_out(R, sp, en, res)
+    res.extend(left)
+    res.extend(right)
+    res.append(sp)
+
+def adp_min_size(points, epi, st, en, mode):
+    res = set()
+    if en - st <= 1:
+        return res
+    max_err = -1
+    idx = -1
+    idx, max_err = getMaxError(st, en, points, mode)
+    # for i in range(st + 1, en):
+    #     # err = getDistance(None, (points[i],i), (points[st],st), (points[en],en), mode)
+    #
+    #     if err > max_err:
+    #         idx = i
+    #         max_err = err
+    if max_err > epi:
+        left_res = adp_min_size(points, epi, st, idx, mode)
+        right_res = adp_min_size(points, epi, idx, en, mode)
+        res.update(left_res)
+        res.update(right_res)
+    else:
+        res.add(st)
+        res.add(en)
+    return res
+
+
+def create_err_space(points, mode):
+    mmp = np.zeros([len(points), len(points)])
+    mmp_id = np.zeros([len(points), len(points)], dtype=np.int8)
+    mmp_list = []
+    for st in range(len(points)):
+        for en in range(st + 2, len(points)):
+            id, err = getMaxError(st, en, points, mode)
+            mmp[st][en] = err
+            mmp_id[st][en] = id
+            mmp_list.append(err)
+    mmp_list.sort()
+    return mmp, mmp_id, mmp_list
 def devect(ids, oov, strip_eos, vocab, pp):
     return devectorize(ids.tolist(), vocab.id2tok, vocab.tok2id[vocab.EOS],
                        strip_eos=strip_eos, oov_map=oov, pp=pp)

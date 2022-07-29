@@ -117,7 +117,8 @@ def sematic_simp(model, src, comp, vocab):
         batch_p = enc_embs[:, i, :]
         batch_trj = dec_embs
         tmp = r(batch_p, batch_trj)
-        sim += tmp[0]
+        sim += tmp
+        # sim += tmp[0]
     # 计算的是所有batch的
     sim = sim / src_len
 
@@ -127,7 +128,8 @@ def sematic_simp(model, src, comp, vocab):
         batch_p = dec_embs[:, i, :]
         batch_trj = enc_embs
         tmp = r(batch_p, batch_trj)
-        sim_2 += tmp[0]
+        sim_2 += tmp
+        # sim_2 += tmp[0]
     # 计算的是所有batch的
     sim_2 = sim_2 / comp_len
     # print(sim,sim_2)
@@ -212,6 +214,8 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
     ik = 0
     with torch.no_grad():
         for i, batch in iterator:
+            if i == 5:
+                break
             print(f"batch {i}")
             batch = batch[:-1]
 
@@ -220,7 +224,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
              src_lengths, trg_lengths) = batch
 
             # trg_lengths = torch.clamp(src_lengths * max_ratio, min=50, max=100)
-            trg_lengths = torch.clamp(src_lengths * max_ratio, min=9, max=15)
+            trg_lengths = torch.clamp(src_lengths * max_ratio, min=9, max=25)
             trg_lengths = torch.floor(trg_lengths).int()
 
             m_zeros = torch.zeros(inp_src.size(0), vocab.size).to(inp_src)
@@ -313,18 +317,18 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                 # bottom-up
                 if metric == "ss":
                     tic1 = time.perf_counter()
-                    _, idx, maxErr = btup(points, complen, 'sed')
+                    # _, idx, maxErr = btup(points, complen, 'sed')
                     tic2 = time.perf_counter()
                     time_btup += tic2 - tic1
-                    comp_vid_btup = [src_vid[i].item() for i in idx]
-                    s_loss_btup = sematic_simp(model, src_vid, comp_vid_btup, vocab)
+                    # comp_vid_btup = [src_vid[i].item() for i in idx]
+                    # s_loss_btup = sematic_simp(model, src_vid, comp_vid_btup, vocab)
                 else:
                     tic1 = time.perf_counter()
                     _, idx, maxErr = btup(points, complen, metric)
                     tic2 = time.perf_counter()
                     time_btup += tic2 - tic1
                     s_loss_btup = maxErr
-                batch_eval_metric_loss_btup.append(s_loss_btup)
+                # batch_eval_metric_loss_btup.append(s_loss_btup)
 
                 # RL
                 if metric == "ss":
@@ -348,15 +352,15 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                     idx, maxErr = bellman(points, complen, 'sed')
                     tic2 = time.perf_counter()
                     time_bellman += tic2 - tic1
-                    comp_vid_bell = [src_vid[i].item() for i in idx]
-                    s_loss_bell = sematic_simp(model, src_vid, comp_vid_bell, vocab)
+                    # comp_vid_bell = [src_vid[i].item() for i in idx]
+                    # s_loss_bell = sematic_simp(model, src_vid, comp_vid_bell, vocab)
                 else:
                     tic1 = time.perf_counter()
                     idx, maxErr = bellman(points, complen, 'sed')
                     tic2 = time.perf_counter()
                     time_bellman += tic2 - tic1
                     s_loss_bell = maxErr
-                batch_eval_metric_loss_bellman.append(s_loss_bell)
+                # batch_eval_metric_loss_bellman.append(s_loss_bell)
                 ik += 1
             if (i + 1) % 10 == 0:
                 time_res += f"Tea {np.sum(time_list)} tdtr {time_adp} errSea {time_error_search} btup {time_btup} rl {time_RL} bell {time_bellman}\n"
@@ -406,7 +410,8 @@ elif metric == 'sed':
     checkpoint = "seq3.full_-sed"
     # checkpoint = "seq3.full_-noAttn"
 elif metric == 'ss':
-    checkpoint = "seq3.full_-valid-tdrive"
+    checkpoint = "seq3.full_-valid"
+    # checkpoint = "seq3.full_-valid-tdrive"
 
 src_file = os.path.join(DATA_DIR, datasets + ".src")
 with open('../preprocess/pickle.txt', 'rb') as f:
