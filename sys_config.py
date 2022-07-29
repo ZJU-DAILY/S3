@@ -17,7 +17,7 @@ TRAINED_PATH = os.path.join(BASE_DIR, "checkpoints")
 
 EMBS_PATH = os.path.join(BASE_DIR, "embeddings")
 
-DATA_DIR = os.path.join(BASE_DIR, 'datasets/')
+DATA_DIR = os.path.join(BASE_DIR, 'datasets/geolife/')
 
 EXP_DIR = os.path.join(BASE_DIR, 'experiments')
 

@@ -31,6 +31,9 @@ class TrajComp():
             self.err_record[(s, e)] = F.sed_op(self.ori_traj_set[episode][s: e + 1])
         elif self.metric == 'ped':
             self.err_record[(s, e)] = F.ped_op(self.ori_traj_set[episode][s: e + 1])
+        elif self.metric == 'dad':
+            self.err_record[(s, e)] = F.dad_op(self.ori_traj_set[episode][s: e + 1])
+
         self.F_ward[m][0] = self.err_record[(s, e)]
         self.B_ward[m][0] = self.err_record[(s, e)]
         # heapq.heappush(self.heap, (self.F_ward[m][0], m))# save (state_value, point index of ori traj)
@@ -218,6 +221,9 @@ class TrajComp():
             elif self.metric == 'ped':
                 self.err_record[(self.B_ward[LAST_P][1], NEXT_P)] = F.ped_op(
                     self.ori_traj_set[episode][self.B_ward[LAST_P][1]: NEXT_P + 1])
+            elif self.metric == 'dad':
+                self.err_record[(self.B_ward[LAST_P][1], NEXT_P)] = F.dad_op(
+                    self.ori_traj_set[episode][self.B_ward[LAST_P][1]: NEXT_P + 1])
             self.F_ward[LAST_P][0] = self.err_record[(self.B_ward[LAST_P][1], NEXT_P)]
             self.B_ward[LAST_P][0] = self.err_record[(self.B_ward[LAST_P][1], NEXT_P)]
             # heapq.heappush(self.heap, (self.F_ward[LAST_P][0], LAST_P))
@@ -228,8 +234,11 @@ class TrajComp():
             if self.metric == 'sed':
                 self.err_record[(LAST_P, self.F_ward[NEXT_P][1])] = F.sed_op(
                     self.ori_traj_set[episode][LAST_P: self.F_ward[NEXT_P][1] + 1])
-            if self.metric == 'ped':
+            elif self.metric == 'ped':
                 self.err_record[(LAST_P, self.F_ward[NEXT_P][1])] = F.ped_op(
+                    self.ori_traj_set[episode][LAST_P: self.F_ward[NEXT_P][1] + 1])
+            elif self.metric == 'dad':
+                self.err_record[(LAST_P, self.F_ward[NEXT_P][1])] = F.dad_op(
                     self.ori_traj_set[episode][LAST_P: self.F_ward[NEXT_P][1] + 1])
 
             self.F_ward[NEXT_P][0] = self.err_record[(LAST_P, self.F_ward[NEXT_P][1])]
@@ -310,6 +319,8 @@ class TrajComp():
                 _, final_error = F.sed_error(self.ori_traj_set[episode], sim_traj)
             elif self.metric == 'ped':
                 _, final_error = F.ped_error(self.ori_traj_set[episode], sim_traj)
+            elif self.metric == 'dad':
+                _, final_error = F.dad_error(self.ori_traj_set[episode], sim_traj)
             return idx, final_error
         if label == 'T':
             print('Training at episode {} with error {}'.format(episode, self.current))

@@ -10,6 +10,7 @@ import numpy as np
 import math
 from RL.data_utils import angle
 
+
 def sequence_mask(lengths, max_len=None):
     """
     Creates a boolean mask from sequence lengths.
@@ -167,9 +168,9 @@ def module_grad_wrt_loss(optimizers, module, loss, prefix=None):
 
 def getDistance(region, p, start, end, mode):
     if region == None:
-        (x, y),p_time = p
-        (st_x, st_y),st_time = start
-        (en_x, en_y),en_time = end
+        (x, y), p_time = p
+        (st_x, st_y), st_time = start
+        (en_x, en_y), en_time = end
     else:
         x, y = cell2gps(region, int(p[0]))
         st_x, st_y = cell2gps(region, int(start[0]))
@@ -179,15 +180,17 @@ def getDistance(region, p, start, end, mode):
         en_time = end[1]
     #     Ax + By + C = 0
     if mode == "sed":
-        return getSED4GPS(((x, y),p_time), ((st_x, st_y),st_time), ((en_x, en_y),en_time))
+        return getSED4GPS(((x, y), p_time), ((st_x, st_y), st_time), ((en_x, en_y), en_time))
     elif mode == "ped":
         return getPED4GPS((x, y), (st_x, st_y), (en_x, en_y))
+
 
 def dad_op(segment):
     if len(segment) <= 2:
         # print('segment error', 0.0)
-        return 0.0
+        return -1, 0.0
     else:
+        mid = -1
         ps = segment[0]
         pe = segment[-1]
         e = 0.0
@@ -196,21 +199,20 @@ def dad_op(segment):
             pm_0 = segment[i]
             pm_1 = segment[i + 1]
             theta_1 = angle([pm_0[0], pm_0[1], pm_1[0], pm_1[1]])
-            e = max(e, min(abs(theta_0 - theta_1), 2 * math.pi - abs(theta_0 - theta_1)))
+            tmp = min(abs(theta_0 - theta_1), 2 * math.pi - abs(theta_0 - theta_1))
+            if tmp > e:
+                e = tmp
+                mid = i
         # print('segment error', e)
-        return e
+        if len(segment) == 3:
+            mid = 1
+        return mid, e
 
-def getDAD4GPS(p, start, end):
-    x, y = p
-    st_x, st_y = start
-    en_x, en_y = end
-    e = 0.0
-    theta_0 = angle([st_x, st_y, en_x, en_y])
 
 def getSED4GPS(p, start, end):
-    (x, y),syn_time = p
-    (st_x, st_y),st_time = start
-    (en_x, en_y),en_time = end
+    (x, y), syn_time = p
+    (st_x, st_y), st_time = start
+    (en_x, en_y), en_time = end
 
     # SED
     # if st_x == en_x:
@@ -229,7 +231,6 @@ def getSED4GPS(p, start, end):
     return math.sqrt(dx * dx + dy * dy)
 
 
-
 def getPED4GPS(p, start, end):
     x, y = p
     st_x, st_y = start
@@ -245,34 +246,35 @@ def getPED4GPS(p, start, end):
 
 
 def SEDsimilarity(region, src, trg, mode):
-    if len(src) == len(trg):
-        print("the length of src is same with trg.")
-    # p为慢指针（指向trg），f为快指针（指向src）。src的长度应该大于等于trg
-    p = 0
-    f = 0
-    maxSED = -1
-    while p < len(trg) and f < len(src):
-        if src[f] == '' or src[f] == 'UNK':
-            f += 1
-            continue
-        if trg[p] == src[f]:
-            p += 1
-            f += 1
-        else:
-            st = trg[p - 1]
-            en = trg[p]
-            while trg[p] != src[f]:
-                if src[f] == '' or src[f] == 'UNK':
-                    f += 1
-                    continue
-                in_ = src[f]
-                dis = getDistance(region, (int(in_),src.index(in_)), (int(st),src.index(st)), (int(en),src.index(en)), mode)
-                maxSED = max(maxSED, dis)
-                f += 1
-    if maxSED == -1:
-        print("errrr")
-        maxSED = 0
-    return maxSED
+    pass
+    # if len(src) == len(trg):
+    #     print("the length of src is same with trg.")
+    # # p为慢指针（指向trg），f为快指针（指向src）。src的长度应该大于等于trg
+    # p = 0
+    # f = 0
+    # maxSED = -1
+    # while p < len(trg) and f < len(src):
+    #     if src[f] == '' or src[f] == 'UNK':
+    #         f += 1
+    #         continue
+    #     if trg[p] == src[f]:
+    #         p += 1
+    #         f += 1
+    #     else:
+    #         st = trg[p - 1]
+    #         en = trg[p]
+    #         while trg[p] != src[f]:
+    #             if src[f] == '' or src[f] == 'UNK':
+    #                 f += 1
+    #                 continue
+    #             in_ = src[f]
+    #             dis = getDistance(region, (int(in_),src.index(in_)), (int(st),src.index(st)), (int(en),src.index(en)), mode)
+    #             maxSED = max(maxSED, dis)
+    #             f += 1
+    # if maxSED == -1:
+    #     print("errrr")
+    #     maxSED = 0
+    # return maxSED
 
 
 def cleanTrj(src):
@@ -321,7 +323,8 @@ def getCompress(region, src, trg):
 
 def getMaxError(st, en, points, mode):
     if mode == 'dad':
-        return dad_op(points[st:en + 1])
+        mid, e = dad_op(points[st:en + 1])
+        return mid + st, e
     maxErr = -1
     idx = -1
     err = -1
@@ -329,18 +332,12 @@ def getMaxError(st, en, points, mode):
         if mode == 'ped':
             err = getPED4GPS(points[i], points[st], points[en])
         elif mode == 'sed':
-            err = getSED4GPS((points[i],i), (points[st],st), (points[en],en))
+            err = getSED4GPS((points[i], i), (points[st], st), (points[en], en))
         if maxErr < err:
             maxErr = err
             idx = i
     return idx, maxErr
 
-if __name__ == '__main__':
-    st = 0
-    en = 4
-    points = [(1,2),(3,5),(2,1),(4,9),(5,7)]
-    err = getMaxError(st,en,points,'dad')
-    print(err)
 
 def getKey_Value(item):
     for it in item.items():
@@ -423,15 +420,17 @@ def calculate_error(points, seg1, seg2, mode):
     st = points[seg1[0]]
     en = points[seg2[-1]]
     max_err = -1
+    if mode == 'dad':
+        return getMaxError(seg1[0], seg2[-1], points, mode)[1]
     for i in range(seg1[0] + 1, seg2[-1]):
         p = points[i]
         if mode == 'ped':
             max_err = max(max_err, getPED4GPS(p, st, en))
         elif mode == 'sed':
-            max_err = max(max_err, getSED4GPS((p,i), (st,seg1[0]), (en,seg2[-1])))
+            max_err = max(max_err, getSED4GPS((p, i), (st, seg1[0]), (en, seg2[-1])))
     return max_err
 
-
+# todo 查找相关bug，err递增很诡异
 def btup(points, max_len, mode):
     segs = []
     for i in range(0, len(points) - 1, 2):
@@ -488,23 +487,24 @@ def static_vars(**kwargs):
 
 @static_vars(minerr=float('inf'))
 def dp(const_src, src, mp_src, max_len, mode, region, step=1):
-    if step + 1 >= max_len:
-        comp = list(src[0:step])
-        comp.append(src[-1])
-        idx = [mp_src[p] for p in comp]
-        return comp, idx
-    for i in range(step, len(src) - 1):
-        swap(src, i, step)
-        comp = list(src[0:step])
-        comp.append(src[-1])
-        comp.sort(key=lambda j: mp_src[j])
-        err = SEDsimilarity(region, const_src, comp, mode)
-        if err < dp.minerr:
-            tmp = dp.minerr
-            dp.minerr = err
-            dp(const_src, src, mp_src, max_len, mode, region, step + 1)
-            dp.minerr = tmp
-        swap(src, i, step)
+    pass
+    # if step + 1 >= max_len:
+    #     comp = list(src[0:step])
+    #     comp.append(src[-1])
+    #     idx = [mp_src[p] for p in comp]
+    #     return comp, idx
+    # for i in range(step, len(src) - 1):
+    #     swap(src, i, step)
+    #     comp = list(src[0:step])
+    #     comp.append(src[-1])
+    #     comp.sort(key=lambda j: mp_src[j])
+    #     err = SEDsimilarity(region, const_src, comp, mode)
+    #     if err < dp.minerr:
+    #         tmp = dp.minerr
+    #         dp.minerr = err
+    #         dp(const_src, src, mp_src, max_len, mode, region, step + 1)
+    #         dp.minerr = tmp
+    #     swap(src, i, step)
 
 
 def swap(points, i, j):
