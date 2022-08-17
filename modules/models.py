@@ -1,4 +1,5 @@
 import time
+from tkinter import N
 
 import torch
 from torch import nn
@@ -175,7 +176,7 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
 
     def generate(self, inputs, src_lengths, trg_seq_len, mask_matrix=None, inp_src=None, vocab=None, region=None):
         # ENCODER
-        enc1_results = self.inp_encoder(inputs, None, src_lengths,vocab=vocab)
+        enc1_results = self.inp_encoder(inputs, None, src_lengths, vocab=vocab)
         outs_enc1, hn_enc1 = enc1_results[-2:]
 
         # DECODER
@@ -194,10 +195,54 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
                                        vocab=vocab, region=region)
         return enc1_results, dec1_results
 
+    def generate_online(self, inp_src, inp_trg,
+                        src_lengths, latent_lengths, tau=1, mask_matrix=None, hard=True, region=None, vocab=None,
+                        decoder_time_list=None,
+                        stream=False, Cache_h=None, Cache_out=None):
+        if inp_src is None:
+            return
+        Cache_h_cur = Cache_h
+        Cache_out_cur = Cache_out
+
+        if not stream:
+            enc1_results = self.inp_encoder(inp_src, None, src_lengths, vocab=vocab)
+            # out是每个node都会输出的，hn是lstm最后一个时刻的值
+            outs_enc1, hn_enc1 = enc1_results[-2:]
+            Cache_h_cur = hn_enc1
+            Cache_out_cur = outs_enc1
+
+        else:
+            enc1_results = self.inp_encoder(inp_src[:, -1:], Cache_h_cur, lengths=torch.tensor([1]).to(inp_src), vocab=vocab)
+            outs_enc1, hn_enc1 = enc1_results[-2:]
+            Cache_h_cur = hn_enc1
+            Cache_out_cur = torch.cat([Cache_out_cur, outs_enc1], dim=1)
+
+        tic1 = time.perf_counter()
+        _dec1_init = self._bridge(self.src_bridge, Cache_h_cur, src_lengths,
+                                  latent_lengths)
+        # inp_fake (batch,seq_len + 1),因为在decoder中，输入是未知的，即需要上一个时刻的输出来作为下一时刻的输入，所以此处相当于先声明一个向量，先给他先送进去。
+        inp_fake = self._fake_inputs(inp_src, latent_lengths, src_lengths)
+
+        dec1_results = self.compressor(inp_fake, Cache_out_cur, _dec1_init,
+                                       enc_lengths=src_lengths,
+                                       sampling_prob=1., hard=hard, tau=tau,
+                                       desired_lengths=latent_lengths, mask_matrix=mask_matrix, inp_src=inp_src,
+                                       region=region, vocab=vocab, time_list=decoder_time_list)
+
+        # if decoder_time_list is not None:
+        #     decoder_time_list[1] += tic2 - tic1
+        # logits_dec1(batch,latent_size,vocab_size -> 此处还未映射) outs_dec1 (batch,seq_len+1,hid_size), dists_dec1 (batch,seq_len,vocab_size):已经one-hot的结果
+        logits_dec1, outs_dec1, _, dists_dec1, _, _ = dec1_results
+        cmp_embeddings = self.compressor.embed.expectation(dists_dec1, vocab)
+        cmp_lengths = latent_lengths - 1  # 删除之前的<sos>起始符，因为作为下一个encoder的输入是不需要起始符的
+        tic2 = time.perf_counter()
+        # print(tic2 - tic1)
+        return enc1_results, dec1_results, Cache_h_cur, Cache_out_cur
+
     # latent_length就是论文中的M
     def forward(self, inp_src, inp_trg,
                 src_lengths, latent_lengths,
-                sampling, tau=1, mask_matrix=None, hard=True, region=None, vocab=None,decoder_time_list=None):
+                sampling, tau=1, mask_matrix=None, hard=True, region=None, vocab=None, decoder_time_list=None):
 
         """
         This approach utilizes 4 RNNs. The latent representation is obtained
@@ -216,11 +261,13 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
             inp_src:输入的轨迹，其中是vocab中的id
             inp_trg:在inp_src的前面加上了一个<sos>起始符
         """
+        # 在模型中注册一下
+        self.generate_online(None, None, None, None)
         # --------------------------------------------
         # ENCODER-1 (Compression)
         # --------------------------------------------
         enc1_results = self.inp_encoder(inp_src, None, src_lengths,
-                                        word_dropout=self.enc_token_dropout,vocab=vocab)
+                                        word_dropout=self.enc_token_dropout, vocab=vocab)
         # encoder的输出以及最后一个的隐向量.注意此处是双向的lstm。num_layer = 2
         # outs_enc1(batch,seq_len,hid_size * bidirection), hn_enc1 (num_layer,batch,hid_size) * bidirection
         outs_enc1, hn_enc1 = enc1_results[-2:]
@@ -238,7 +285,7 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
                                        enc_lengths=src_lengths,
                                        sampling_prob=1., hard=hard, tau=tau,
                                        desired_lengths=latent_lengths, mask_matrix=mask_matrix, inp_src=inp_src,
-                                       region=region, vocab=vocab,time_list=decoder_time_list)
+                                       region=region, vocab=vocab, time_list=decoder_time_list)
         tic2 = time.perf_counter()
         # if decoder_time_list is not None:
         #     decoder_time_list[1] += tic2 - tic1
@@ -249,7 +296,7 @@ class Seq2Seq2Seq(nn.Module, RecurrentHelper):
         # ENCODER-2 (Reconstruction)
         # --------------------------------------------
         # cmp_embeddings (batch,seq_len,emb_size)
-        cmp_embeddings = self.compressor.embed.expectation(dists_dec1,vocab)
+        cmp_embeddings = self.compressor.embed.expectation(dists_dec1, vocab)
         cmp_lengths = latent_lengths - 1  # 删除之前的<sos>起始符，因为作为下一个encoder的输入是不需要起始符的
 
         # !!! Limit the communication only through the embs

@@ -1,7 +1,8 @@
 import torch
 from torch.nn import functional as F
-from modules.helpers import sequence_mask, getDistance, adp, id2gps, getMaxError
+from modules.helpers import sequence_mask
 from preprocess.SpatialRegionTools import cell2gps
+# from generate.utils import getMaxError
 import numpy as np
 
 
@@ -110,7 +111,7 @@ def r(p, trj):
         p2 = trj[:, i, :]
         # 由于pairwise_loss对每个batch做了平均，所以返回的就是一个值
 
-        l = pairwise_loss(p[:,0:100], p2[:,0:100], "dot")
+        l = pairwise_loss(p[:, 0:100], p2[:, 0:100], "dot")
         # l中的值为1，说明两个向量恰好呈90，或者其中某个向量为0向量。后者发生的概率远大于前者，所以我们直接将1的值抹掉
         # l[torch.where(l == 1)] = 0
         # l[torch.where(l == 1.0000e-06)] = 0
@@ -124,99 +125,102 @@ def r(p, trj):
 
 
 def sed_loss(region, src, trg, mode):
-    if len(src) == len(trg):
-        print("the length of src is same with trg.")
-    # # p为慢指针（指向trg），f为快指针（指向src）。src的长度应该大于等于trg
-    # p = 0
-    # f = 0
+    pass
+    # if len(src) == len(trg):
+    #     print("the length of src is same with trg.")
+    # # # p为慢指针（指向trg），f为快指针（指向src）。src的长度应该大于等于trg
+    # # p = 0
+    # # f = 0
+    # # maxSED = -1
+    # # while p < len(trg) and f < len(src):
+    # #     if src[f] == '' or src[f] == 'UNK':
+    # #         f += 1
+    # #         continue
+    # #     if trg[p] == src[f]:
+    # #         p += 1
+    # #         f += 1
+    # #     else:
+    # #         st = trg[p - 1]
+    # #         en = trg[p]
+    # #         while trg[p] != src[f]:
+    # #             if src[f] == '' or src[f] == 'UNK':
+    # #                 f += 1
+    # #                 continue
+    # #             in_ = src[f]
+    # #             dis = getDistance(region, (int(in_),src.index(in_)), (int(st),src.index(st)), (int(en),src.index(en)), mode)
+    # #             maxSED = max(maxSED, dis)
+    # #             f += 1
+    # # if maxSED == -1:
+    # #     print("errrr")
+    # #     maxSED = 0
+    # # return maxSED
     # maxSED = -1
-    # while p < len(trg) and f < len(src):
-    #     if src[f] == '' or src[f] == 'UNK':
-    #         f += 1
-    #         continue
-    #     if trg[p] == src[f]:
-    #         p += 1
-    #         f += 1
+    # if '' in src:
+    #     src.remove('')
+    # if 'UNK' in src:
+    #     src.remove('UNK')
+    # if '' in trg:
+    #     trg.remove('')
+    # if 'UNK' in trg:
+    #     trg.remove('UNK')
+    # # assert len(set(src)) == len(src)
+    # idx = []
+    # for i, x in enumerate(trg):
+    #     if len(idx) == 0:
+    #         id = src.index(x)
     #     else:
-    #         st = trg[p - 1]
-    #         en = trg[p]
-    #         while trg[p] != src[f]:
-    #             if src[f] == '' or src[f] == 'UNK':
-    #                 f += 1
-    #                 continue
-    #             in_ = src[f]
-    #             dis = getDistance(region, (int(in_),src.index(in_)), (int(st),src.index(st)), (int(en),src.index(en)), mode)
-    #             maxSED = max(maxSED, dis)
-    #             f += 1
-    # if maxSED == -1:
-    #     print("errrr")
-    #     maxSED = 0
+    #         st = idx[-1] + 1
+    #         id = st + src[st:].index(x)
+    #     idx.append(id)
+    # idx = [src.index(x) for i, x in enumerate(trg)]
+    # points = [cell2gps(region, int(x)) for x in src]
+    # for i in range(len(idx) - 1):
+    #     st = idx[i]
+    #     en = idx[i + 1]
+    #     maxSED = max(maxSED, getMaxError(st, en, points, mode)[1])
+    #
+    # assert maxSED != -1
     # return maxSED
-    maxSED = -1
-    if '' in src:
-        src.remove('')
-    if 'UNK' in src:
-        src.remove('UNK')
-    if '' in trg:
-        trg.remove('')
-    if 'UNK' in trg:
-        trg.remove('UNK')
-    # assert len(set(src)) == len(src)
-    idx = []
-    for i, x in enumerate(trg):
-        if len(idx) == 0:
-            id = src.index(x)
-        else:
-            st = idx[-1] + 1
-            id = st + src[st:].index(x)
-        idx.append(id)
-    idx = [src.index(x) for i, x in enumerate(trg)]
-    points = [cell2gps(region, int(x)) for x in src]
-    for i in range(len(idx) - 1):
-        st = idx[i]
-        en = idx[i + 1]
-        maxSED = max(maxSED, getMaxError(st, en, points, mode)[1])
-
-    assert maxSED != -1
-    return maxSED
 
 
 def energy_(region, inp, size_1):
-    enc1_energies = []
-    for trj in inp:
-        ener = [0] * size_1
-        for i in range(1, len(trj) - 1):
-            # window取到1
-            p = int(trj[i])
-            st = int(trj[i - 1])
-            if trj[i + 1] == '':
-                break
-            en = int(trj[i + 1])
-            pri = getDistance(region, p, st, en)
-            # window取到2
-            st = int(trj[i - 2 if i - 2 > 0 else 0])
-            if trj[i + 1 if i + 1 < len(trj) - 1 else len(trj) - 1] == '':
-                break
-            en = int(trj[i + 1 if i + 1 < len(trj) - 1 else len(trj) - 1])
-            pri2 = getDistance(region, p, st, en)
-
-            ener[i] = (pri + pri2) / 2
-        enc1_energies.append(ener)
-    return enc1_energies
+    pass
+    # enc1_energies = []
+    # for trj in inp:
+    #     ener = [0] * size_1
+    #     for i in range(1, len(trj) - 1):
+    #         # window取到1
+    #         p = int(trj[i])
+    #         st = int(trj[i - 1])
+    #         if trj[i + 1] == '':
+    #             break
+    #         en = int(trj[i + 1])
+    #         pri = getDistance(region, p, st, en)
+    #         # window取到2
+    #         st = int(trj[i - 2 if i - 2 > 0 else 0])
+    #         if trj[i + 1 if i + 1 < len(trj) - 1 else len(trj) - 1] == '':
+    #             break
+    #         en = int(trj[i + 1 if i + 1 < len(trj) - 1 else len(trj) - 1])
+    #         pri2 = getDistance(region, p, st, en)
+    #
+    #         ener[i] = (pri + pri2) / 2
+    #     enc1_energies.append(ener)
+    # return enc1_energies
 
 
 def energy_2(region, inp, size_1, src_lengths):
-    enc1_energies = []
-    for trj, _len in zip(inp, src_lengths):
-        ener = [0] * size_1
-        trj = trj[0:_len]
-        try:
-            _, idx, _ = adp(id2gps(region, trj), _len)
-        except Exception as e:
-            print(trj)
-            idx = []
-
-        for id in idx:
-            ener[id] = 1
-        enc1_energies.append(ener)
-    return enc1_energies
+    pass
+    # enc1_energies = []
+    # for trj, _len in zip(inp, src_lengths):
+    #     ener = [0] * size_1
+    #     trj = trj[0:_len]
+    #     try:
+    #         _, idx, _ = adp(id2gps(region, trj), _len)
+    #     except Exception as e:
+    #         print(trj)
+    #         idx = []
+    #
+    #     for id in idx:
+    #         ener[id] = 1
+    #     enc1_energies.append(ener)
+    # return enc1_energies

@@ -62,7 +62,8 @@ def expected_vecs(dists, vecs):
 
 
 def straight_softmax(logits, tau=1, hard=False, target_mask=None):
-    y_soft = F.softmax(logits.squeeze() / tau, dim=1)
+    # y_soft = F.softmax(logits.squeeze() / tau, dim=1)
+    y_soft = F.softmax(logits / tau, dim=1)
 
     if target_mask is not None:
         y_soft = y_soft * target_mask.float()

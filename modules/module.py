@@ -5,7 +5,7 @@ from torch import nn
 from torch.nn import functional as F
 from torch.nn.utils.rnn import pad_packed_sequence, pack_padded_sequence
 
-from modules.helpers import straight_softmax, gumbel_softmax, getErr, getDistance
+from modules.helpers import straight_softmax, gumbel_softmax
 from modules.layers import Embed, Attention
 from utils.gcn_emb import gcn_emb
 
@@ -576,9 +576,9 @@ class AttSeqDecoder(nn.Module):
                     dist = m_zeros.scatter(1, label, 1)
                 elif self.gumbel and self.training:
                     if mask_matrix is not None and self._coin_flip(sampling_prob):
-                        dist = gumbel_softmax(logits[-1].squeeze(), tau, hard, target_mask=mask_matrix)
+                        dist = gumbel_softmax(logits[-1].squeeze(1), tau, hard, target_mask=mask_matrix)
                     else:
-                        dist = gumbel_softmax(logits[-1].squeeze(), tau, hard)
+                        dist = gumbel_softmax(logits[-1].squeeze(1), tau, hard)
                 else:
                     if mask_matrix is not None:
                     # if mask_matrix is not None and self._coin_flip(sampling_prob):
@@ -587,12 +587,12 @@ class AttSeqDecoder(nn.Module):
                         # mask_logit = mask_vector * logit
                         # if mask_vector[0][0] == 1:
                         #     print()
-                        dist = straight_softmax(logits[-1].squeeze(), tau, hard, mask_matrix)
+                        dist = straight_softmax(logits[-1].squeeze(1), tau, hard, mask_matrix)
                         # if 0 in dist.max(-1)[1]:
                         #     print("module:592 => 0 in dist.max(-1)[1]")
                         #     straight_softmax(logits[-1].squeeze(), tau, hard, mask_matrix)
                     else:
-                        dist = straight_softmax(logits[-1].squeeze(), tau, hard)
+                        dist = straight_softmax(logits[-1].squeeze(1), tau, hard)
 
                 # A = logits[-1].squeeze()
                 # print(A.max(-1)[1])
@@ -627,7 +627,8 @@ class AttSeqDecoder(nn.Module):
                              device=enc_states.device,
                              dtype=enc_states.dtype)
 
-        return ho
+        return ho.view(batch, 1, self.ho_size)
+        # return ho
 
     def step(self, embs, enc_outputs, state, enc_lengths, ho=None, tick=None, ec=None, attn_coverage=None):
         """

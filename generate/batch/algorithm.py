@@ -1,6 +1,9 @@
 
 
 # adaptive douglas-peucker
+from generate.utils import getPED4GPS
+
+
 def adp(points, max_len, mode):
     if max_len > len(points):
         return None
@@ -28,42 +31,6 @@ def adp(points, max_len, mode):
         pp.append(points[idx])
     # 坐标点，下标，最大误差
     return pp, res, maxErr
-
-
-# squish压缩算法
-def squish(points, max_buffer_size):
-    pass
-    # buffer = []
-    # # 坐标、err、下标
-    # buffer.append([points[0], 0, 0])
-    # max_err = 0
-    # if max_buffer_size > 2:
-    #     for i in range(1, len(points)):
-    #         buffer.append([points[i], 0, i])
-    #         if len(buffer) <= 2:
-    #             continue
-    #         segment_start = buffer[-3][0]
-    #         segment_end = buffer[-1][0]
-    #         buffer[-2][1] += getSED4GPS(buffer[-2][0], segment_start, segment_end)
-    #         if len(buffer) > max_buffer_size:
-    #             to_remove = len(buffer) - 2
-    #             for j in range(1, len(buffer) - 1):
-    #                 if buffer[j][1] < buffer[to_remove][1]:
-    #                     to_remove = j
-    #             buffer[to_remove - 1][1] += buffer[to_remove][1]
-    #             buffer[to_remove + 1][1] += buffer[to_remove][1]
-    #             err = getSED4GPS(buffer[to_remove][0], buffer[to_remove - 1][0], buffer[to_remove + 1][0])
-    #             max_err = max(max_err, err)
-    #             buffer.pop(to_remove)
-    # else:
-    #     buffer.append([points[-1], 0, len(points) - 1])
-    #     segment_start = buffer[0][0]
-    #     segment_end = buffer[-1][0]
-    #     for i in range(1, len(points) - 1):
-    #         max_err = max(max_err, getSED4GPS(points[i], segment_start, segment_end))
-    # idx = [p[2] for p in buffer]
-    # pp = [p[2] for p in buffer]
-    # return pp, idx, max_err
 
 
 

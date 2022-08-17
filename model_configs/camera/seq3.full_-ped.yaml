@@ -1,5 +1,5 @@
 checkpoint_interval: 5000 # how often (batches) to save a checkpoint
-eval_interval: 500        # 100 how often (batches) to evaluate the model on the dev set. Note: eval_interval need to be smaller than train_data_size / batch_size (batch number in one epoch)
+eval_interval: 50        # 100 how often (batches) to evaluate the model on the dev set. Note: eval_interval need to be smaller than train_data_size / batch_size (batch number in one epoch)
 #eval_interval: 10
 log_interval: 50          # how often (batches) to log the training process to console
 batch_size: 20           # size of a batch-128
@@ -120,7 +120,7 @@ model:
   embed_dropout: 0.0          # dropout probability for the embedding layer(s)
   embed_trainable: True       # Finetune the embeddings
   embed_masked: False         # Finetune the only the words not included in the pretrained embeddings.
-  layer_norm: True            # Apply layer normalization to the outputs of the decoders
+  layer_norm: False            # Apply layer normalization to the outputs of the decoders
   gnn_used: True
   gnn_latent_dim: 128
   enc_token_dropout: 0.0      # % of words to drop from the input

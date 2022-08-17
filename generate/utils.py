@@ -4,16 +4,18 @@ import math
 from itertools import groupby
 
 import torch
+from scipy.spatial import KDTree
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from RL.data_utils import angle
 from modules.data.collates import Seq2SeqOOVCollate
 from modules.data.datasets import AEDataset
 from modules.models import Seq2Seq2Seq
+from preprocess.SpatialRegionTools import cell2gps
 from utils.training import load_checkpoint
 import numpy as np
 from models.seq3_losses import sed_loss
-from modules.helpers import getCompress
 
 
 def cleanTrj(src):
@@ -110,7 +112,8 @@ def getCompress(region, src, trg):
         dists, idxs = tree.query(np.array([[x, y]]), 1)
         if dists[0] > epi:
             continue
-        id = idxs[0].tolist()[0]
+        id = idxs[0]
+        # id = idxs[0].tolist()[0]
         if src[id] not in resTrj:
             resTrj.append(src[id])
     if src[-1] not in resTrj:
@@ -398,3 +401,5 @@ def get_sed_loss(vocab, region, inp, dec1):
     # loss = sed_loss(region, src, comp_trj)
 
     return loss, comp_trj
+
+
