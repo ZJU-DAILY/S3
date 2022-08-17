@@ -15,7 +15,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pickle
 import time
 
-from modules.helpers import sequence_mask, getCompress, dp, btup
+from modules.helpers import sequence_mask
+from generate.utils import getCompress
+
 from preprocess.SpatialRegionTools import cell2gps, cell2meters
 from sys_config import DATA_DIR
 
@@ -27,10 +29,9 @@ from modules.data.datasets import AEDataset
 from modules.models import Seq2Seq2Seq
 from utils.training import load_checkpoint
 import numpy as np
-from modules.helpers import adp
+from generate.batch.algorithm import adp, error_search_algorithm, bellman, btup
 from models.seq3_losses import r, sed_loss
 from models.constants import minerr
-from generate.error_search import error_search_algorithm, bellman
 
 from RL.rl_env_inc import TrajComp
 from RL.rl_brain import PolicyGradient
