@@ -12,7 +12,7 @@ datasets_ = "tdrive"
 # todo 完成数据集的重新生成
 def createTrainVal(region, trjfile,
                    # 60%,20%,20%
-                   ntrain=0, nval=0, neval=1000,
+                   ntrain=3000, nval=1000, neval=1000,
                    min_length=30, max_length=60):
     # seq2str(seq) = join(map(string, seq), " ") * "\n"
 
@@ -70,7 +70,7 @@ def createTrainVal(region, trjfile,
     print(sum_)
 path = "../datasets/beijing.pos"
 # path = "../datasets/porto.pos"
-createVocab_save(path)
+# createVocab_save(path)
 with open(f'../datasets/{datasets_}/pickle.txt', 'rb') as f:
     var_a = pickle.load(f)
 region = pickle.loads(var_a)

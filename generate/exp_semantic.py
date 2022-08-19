@@ -331,7 +331,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                     tic2 = time.perf_counter()
                     time_btup += tic2 - tic1
                     s_loss_btup = maxErr
-                # batch_eval_metric_loss_btup.append(s_loss_btup)
+                batch_eval_metric_loss_btup.append(s_loss_btup)
 
                 # RL
                 if metric == "ss":
@@ -427,8 +427,8 @@ metric = sys.argv[1]
 datasets = sys.argv[2]
 
 if metric == 'ped' or metric == 'dad':
-    # checkpoint = "seq3.full_-ped-tdrive"
-    checkpoint = "seq3.full_-sed-tdrive"
+    checkpoint = "seq3.full_-ped-tdrive"
+    # checkpoint = "seq3.full_-sed-tdrive"
     # checkpoint = "seq3.full_-ped"
 elif metric == 'sed':
     # checkpoint = "seq3.full_-sed-tdrive"
@@ -469,3 +469,5 @@ with open(f"../experiments/result_{checkpoint}_{metric}_{datasets}_x_0818_time",
         head = f"压缩率: {ratio / 10} \n------------------------\n"
         res = compress_seq3(data_loader, ratio / 10, model, vocab, region, metric)
         f.write(head + res + "\n")
+
+
