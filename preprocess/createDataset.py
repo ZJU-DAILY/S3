@@ -8,19 +8,19 @@ import pickle
 
 from preprocess.SpatialRegionTools import trip2seq, str2trip, seq2str, createVocab_save
 
-
+datasets_ = "tdrive"
 # todo 完成数据集的重新生成
 def createTrainVal(region, trjfile,
                    # 60%,20%,20%
                    ntrain=0, nval=0, neval=1000,
-                   min_length=400, max_length=512):
+                   min_length=30, max_length=60):
     # seq2str(seq) = join(map(string, seq), " ") * "\n"
 
     with open(trjfile, "r") as f:
         ss = f.readlines()
-        trainsrc = open("../datasets/train.src", "w")
-        validsrc = open("../datasets/val.src", "w")
-        evalsrc = open("../datasets/eval.src", "w")
+        trainsrc = open(f"../datasets/{datasets_}/train.src", "w")
+        validsrc = open(f"../datasets/{datasets_}/val.src", "w")
+        evalsrc = open(f"../datasets/{datasets_}/eval.src", "w")
         cnt = 1
         sum_ = 0
 
@@ -71,7 +71,7 @@ def createTrainVal(region, trjfile,
 path = "../datasets/beijing.pos"
 # path = "../datasets/porto.pos"
 createVocab_save(path)
-with open('../datasets/geolife/pickle.txt', 'rb') as f:
+with open(f'../datasets/{datasets_}/pickle.txt', 'rb') as f:
     var_a = pickle.load(f)
 region = pickle.loads(var_a)
-# createTrainVal(region, path)
+createTrainVal(region, path)

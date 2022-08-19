@@ -36,6 +36,7 @@ from models.constants import minerr
 from RL.rl_env_inc import TrajComp
 from RL.rl_brain import PolicyGradient
 from RL.data_utils import dad_op, dad_error
+from generate.batch.spanSearch import span_search, error_search
 
 
 # import torch_tensorrt
@@ -199,6 +200,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
     batch_eval_metric_loss_error_search = []
     batch_eval_metric_loss_RL = []
     batch_eval_metric_loss_bellman = []
+    batch_eval_metric_loss_span_search = []
     # 平均每个点的重要程度
 
     time_seq3 = 0
@@ -215,8 +217,8 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
     ik = 0
     with torch.no_grad():
         for i, batch in iterator:
-            if i == 5:
-                break
+            # if i == 5:
+            #     break
             print(f"batch {i}")
             batch = batch[:-1]
 
@@ -224,8 +226,8 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
             (inp_src, out_src, inp_trg, out_trg,
              src_lengths, trg_lengths) = batch
 
-            trg_lengths = torch.clamp(src_lengths * max_ratio, min=5, max=25)
-            # trg_lengths = torch.clamp(src_lengths * max_ratio, min=9, max=25)
+            # trg_lengths = torch.clamp(src_lengths * max_ratio, min=5, max=25)
+            trg_lengths = torch.clamp(src_lengths * max_ratio, min=9, max=25)
             trg_lengths = torch.floor(trg_lengths).int()
 
             m_zeros = torch.zeros(inp_src.size(0), vocab.size).to(inp_src)
@@ -309,7 +311,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                     s_loss_ersh = sematic_simp(model, src_vid, comp_vid_ersh, vocab)
                 else:
                     tic1 = time.perf_counter()
-                    # idx, maxErr = error_search_algorithm(points, complen, metric)
+                    idx, maxErr = error_search(points, complen)
                     tic2 = time.perf_counter()
                     time_error_search += tic2 - tic1
                     s_loss_ersh = maxErr
@@ -329,7 +331,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                     tic2 = time.perf_counter()
                     time_btup += tic2 - tic1
                     s_loss_btup = maxErr
-                batch_eval_metric_loss_btup.append(s_loss_btup)
+                # batch_eval_metric_loss_btup.append(s_loss_btup)
 
                 # RL
                 if metric == "ss":
@@ -350,7 +352,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                 # bellman
                 if metric == "ss":
                     tic1 = time.perf_counter()
-                    idx, maxErr = bellman(points, complen, 'sed')
+                    # idx, maxErr = bellman(points, complen, 'sed')
                     tic2 = time.perf_counter()
                     time_bellman += tic2 - tic1
                     # comp_vid_bell = [src_vid[i].item() for i in idx]
@@ -361,7 +363,25 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                     tic2 = time.perf_counter()
                     time_bellman += tic2 - tic1
                     s_loss_bell = maxErr
-                batch_eval_metric_loss_bellman.append(s_loss_bell)
+                # batch_eval_metric_loss_bellman.append(s_loss_bell)
+
+                # span-search
+                if metric == "ss":
+                    tic1 = time.perf_counter()
+                    idx, maxErr = span_search(points, complen)
+                    tic2 = time.perf_counter()
+                    time_bellman += tic2 - tic1
+                    comp_vid_bell = [src_vid[i].item() for i in idx]
+                    s_loss_span_search = sematic_simp(model, src_vid, comp_vid_bell, vocab)
+                else:
+                    tic1 = time.perf_counter()
+                    idx, maxErr = span_search(points, complen)
+                    tic2 = time.perf_counter()
+                    time_bellman += tic2 - tic1
+                    s_loss_span_search = maxErr
+                batch_eval_metric_loss_span_search.append(s_loss_span_search)
+
+
                 ik += 1
             if (i + 1) % 10 == 0:
                 time_res += f"Tea {np.sum(time_list)} tdtr {time_adp} errSea {time_error_search} btup {time_btup} rl {time_RL} bell {time_bellman}\n"
@@ -369,19 +389,22 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
             # batch_eval_loss.append(np.mean(loss))
 
     # print(f"压缩率 {max_ratio},耗时 {time_sum},误差 {np.mean(batch_eval_loss)},关键程度 {np.mean(key_info)},语义相似度 {np.mean(batch_eval_semantic_loss_seq3)},失真 {np.mean(delta)}")
-    print(f"Tea\t|\t推理用时:\t{np.sum(time_list)}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_seq3)}")
-    print(f"TDTR\t|\t推理用时:\t{time_adp}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_adp)}")
-    print(f"Error Search\t|\t推理用时:\t{time_error_search}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_error_search)}")
-    print(f"Bottom up\t|\t推理用时:\t{time_btup} |\t{metric}:\t{np.mean(batch_eval_metric_loss_btup)}")
-    print(f"RL\t|\t推理用时:\t{time_RL} |\t{metric}:\t{np.mean(batch_eval_metric_loss_RL)}")
-    print(f"bellman\t|\t推理用时:\t{time_bellman} |\t{metric}:\t{np.mean(batch_eval_metric_loss_bellman)}")
+    # print(f"Tea\t|\t推理用时:\t{np.sum(time_list)}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_seq3)}")
+    # print(f"TDTR\t|\t推理用时:\t{time_adp}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_adp)}")
+    # print(f"Error Search\t|\t推理用时:\t{time_error_search}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_error_search)}")
+    # print(f"Bottom up\t|\t推理用时:\t{time_btup} |\t{metric}:\t{np.mean(batch_eval_metric_loss_btup)}")
+    # print(f"RL\t|\t推理用时:\t{time_RL} |\t{metric}:\t{np.mean(batch_eval_metric_loss_RL)}")
+    # print(f"bellman\t|\t推理用时:\t{time_bellman} |\t{metric}:\t{np.mean(batch_eval_metric_loss_bellman)}")
+    #
 
     res = f"Tea\t|\t推理用时:\t{np.sum(time_list)}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_seq3)}\n" \
           f"TDTR\t|\t推理用时:\t{time_adp}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_adp)}\n" \
           f"Error Search\t|\t推理用时:\t{time_error_search}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_error_search)}\n" \
           f"Bottom up\t|\t推理用时:\t{time_btup} |\t{metric}:\t{np.mean(batch_eval_metric_loss_btup)}\n" \
           f"RL\t|\t推理用时:\t{time_RL} |\t{metric}:\t{np.mean(batch_eval_metric_loss_RL)}\n" \
-          f"bellman\t|\t推理用时:\t{time_bellman} |\t{metric}:\t{np.mean(batch_eval_metric_loss_bellman)}\n"
+          f"bellman\t|\t推理用时:\t{time_bellman} |\t{metric}:\t{np.mean(batch_eval_metric_loss_bellman)}\n" \
+          f"span_search\t|\t推理用时:\t{time_bellman} |\t{metric}:\t{np.mean(batch_eval_metric_loss_span_search)}\n"
+    print(res)
     return time_res + res
 
 
@@ -405,7 +428,8 @@ datasets = sys.argv[2]
 
 if metric == 'ped' or metric == 'dad':
     # checkpoint = "seq3.full_-ped-tdrive"
-    checkpoint = "seq3.full_-ped"
+    checkpoint = "seq3.full_-sed-tdrive"
+    # checkpoint = "seq3.full_-ped"
 elif metric == 'sed':
     # checkpoint = "seq3.full_-sed-tdrive"
     checkpoint = "seq3.full_-sed"
@@ -415,7 +439,7 @@ elif metric == 'ss':
     # checkpoint = "seq3.full_-valid-tdrive"
 
 src_file = os.path.join(DATA_DIR, datasets + ".src")
-with open('../preprocess/pickle.txt', 'rb') as f:
+with open(os.path.join(DATA_DIR, 'pickle.txt'), 'rb') as f:
     var_a = pickle.load(f)
 region = pickle.loads(var_a)
 

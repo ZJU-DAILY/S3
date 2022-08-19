@@ -108,7 +108,7 @@ def r(p, trj):
         p2 = trj[:, i, :]
         # 由于pairwise_loss对每个batch做了平均，所以返回的就是一个值
 
-        l = pairwise_loss(p[:, 0:100], p2[:, 0:100], "dot")
+        l = pairwise_loss(p, p2, "cosine_max")
         # l中的值为1，说明两个向量恰好呈90，或者其中某个向量为0向量。后者发生的概率远大于前者，所以我们直接将1的值抹掉
         # l[torch.where(l == 1)] = 0
         # l[torch.where(l == 1.0000e-06)] = 0
@@ -118,7 +118,7 @@ def r(p, trj):
         else:
             # 将batch中的每一个更新，取最大值
             max_l = torch.max(max_l, l)
-    return max_l.tolist()
+    return max_l.tolist()[0]
 
 
 

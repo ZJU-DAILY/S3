@@ -24,7 +24,7 @@ from modules.models import Seq2Seq2Seq
 from modules.module import SeqReader
 from mylogger.attention import samples2html
 from mylogger.experiment import Experiment
-from sys_config import EXP_DIR, EMBS_PATH, MODEL_CNF_DIR
+from sys_config import EXP_DIR, EMBS_PATH, MODEL_CNF_DIR, DATA_DIR
 from utils.eval import rouge_file_list, pprint_rouge_scores
 from utils.generic import number_h
 from utils.opts import seq2seq2seq_options
@@ -75,7 +75,7 @@ def giga_tokenizer(x):
 
 
 print("Building training dataset...")
-with open('../preprocess/pickle.txt', 'rb') as f:
+with open(os.path.join(DATA_DIR, 'pickle.txt'), 'rb') as f:
     var_a = pickle.load(f)
 region = pickle.loads(var_a)
 
