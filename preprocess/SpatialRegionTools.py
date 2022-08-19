@@ -284,7 +284,7 @@ def createVocab_save(path):
     makeVocab(region, path)
 
     var_b = pickle.dumps(region)
-    with open('pickle.txt', 'wb') as f:
+    with open('../datasets/geolife/pickle.txt', 'wb') as f:
         pickle.dump(var_b, f)
 
 

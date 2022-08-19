@@ -70,8 +70,8 @@ def createTrainVal(region, trjfile,
     print(sum_)
 path = "../datasets/beijing.pos"
 # path = "../datasets/porto.pos"
-# createVocab_save(path)
-with open('pickle.txt', 'rb') as f:
+createVocab_save(path)
+with open('../datasets/geolife/pickle.txt', 'rb') as f:
     var_a = pickle.load(f)
 region = pickle.loads(var_a)
-createTrainVal(region, path)
+# createTrainVal(region, path)

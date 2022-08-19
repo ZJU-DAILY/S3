@@ -145,7 +145,7 @@ torch.manual_seed(seed)
 if torch.cuda.is_available():
     torch.cuda.manual_seed(seed)
 metric = "ss"
-datasets = "infer_small"
+datasets = "len250"
 
 checkpoint = "seq3.full_-ped"
 
@@ -157,7 +157,7 @@ region = pickle.loads(var_a)
 data_loader, model, vocab = load_model(path, checkpoint, src_file, device)
 # --------------------------------------------------------------------
 # 1-5对应90%-50%的压缩率
-range_ = range(1, 6)
+range_ = range(5, 6)
 for ratio in range_:
     print(f"压缩率: {ratio / 10} \n------------------------")
     head = f"压缩率: {ratio / 10} \n------------------------\n"

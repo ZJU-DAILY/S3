@@ -1,7 +1,9 @@
 
 
 # adaptive douglas-peucker
-from generate.utils import getPED4GPS
+import functools
+
+from generate.utils import *
 
 
 def adp(points, max_len, mode):

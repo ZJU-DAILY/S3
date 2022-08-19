@@ -16,7 +16,7 @@ import pickle
 import time
 
 from modules.helpers import sequence_mask
-from generate.utils import getCompress
+from generate.utils import getCompress, sed_loss
 
 from preprocess.SpatialRegionTools import cell2gps, cell2meters
 from sys_config import DATA_DIR
@@ -30,7 +30,7 @@ from modules.models import Seq2Seq2Seq
 from utils.training import load_checkpoint
 import numpy as np
 from generate.batch.algorithm import adp, error_search_algorithm, bellman, btup
-from models.seq3_losses import r, sed_loss
+from models.seq3_losses import r
 from models.constants import minerr
 
 from RL.rl_env_inc import TrajComp
@@ -224,8 +224,8 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
             (inp_src, out_src, inp_trg, out_trg,
              src_lengths, trg_lengths) = batch
 
-            # trg_lengths = torch.clamp(src_lengths * max_ratio, min=50, max=100)
-            trg_lengths = torch.clamp(src_lengths * max_ratio, min=9, max=25)
+            trg_lengths = torch.clamp(src_lengths * max_ratio, min=5, max=25)
+            # trg_lengths = torch.clamp(src_lengths * max_ratio, min=9, max=25)
             trg_lengths = torch.floor(trg_lengths).int()
 
             m_zeros = torch.zeros(inp_src.size(0), vocab.size).to(inp_src)
@@ -329,7 +329,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                     tic2 = time.perf_counter()
                     time_btup += tic2 - tic1
                     s_loss_btup = maxErr
-                # batch_eval_metric_loss_btup.append(s_loss_btup)
+                batch_eval_metric_loss_btup.append(s_loss_btup)
 
                 # RL
                 if metric == "ss":
@@ -357,11 +357,11 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                     # s_loss_bell = sematic_simp(model, src_vid, comp_vid_bell, vocab)
                 else:
                     tic1 = time.perf_counter()
-                    idx, maxErr = bellman(points, complen, 'sed')
+                    # idx, maxErr = bellman(points, complen, 'sed')
                     tic2 = time.perf_counter()
                     time_bellman += tic2 - tic1
                     s_loss_bell = maxErr
-                # batch_eval_metric_loss_bellman.append(s_loss_bell)
+                batch_eval_metric_loss_bellman.append(s_loss_bell)
                 ik += 1
             if (i + 1) % 10 == 0:
                 time_res += f"Tea {np.sum(time_list)} tdtr {time_adp} errSea {time_error_search} btup {time_btup} rl {time_RL} bell {time_bellman}\n"
@@ -437,7 +437,7 @@ RL = PolicyGradient(env.n_features, env.n_actions)
 RL.load('../RL/save/0.00039190653824900003_ratio_0.1/')  # your_trained_model your_trained_model_skip
 
 # --------------------------------------------------------------------
-with open(f"../experiments/result_{checkpoint}_{metric}_{datasets}_x_0728_night", "a") as f:
+with open(f"../experiments/result_{checkpoint}_{metric}_{datasets}_x_0818_time", "a") as f:
     # 1-5对应90%-50%的压缩率
     range_ = range(1, 6)
     for ratio in range_:

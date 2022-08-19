@@ -1,7 +1,7 @@
 import torch
 from torch.nn import functional as F
 
-from models.seq3_losses import _kl_div, kl_length, pairwise_loss, sed_loss, energy_, energy_2,r
+from models.seq3_losses import _kl_div, kl_length, pairwise_loss, energy_, energy_2,r
 from models.seq3_utils import sample_lengths
 from modules.helpers import sequence_mask, avg_vectors, module_grad_wrt_loss
 from modules.training.trainer import Trainer
@@ -9,7 +9,7 @@ from generate.utils import devectorize
 from numpy import mean
 from utils.data_parsing import getArea
 import numpy as np
-from generate.utils import getCompress
+from generate.utils import getCompress, sed_loss
 
 
 class Seq3Trainer(Trainer):

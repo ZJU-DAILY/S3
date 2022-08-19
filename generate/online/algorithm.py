@@ -163,12 +163,12 @@ def compress_sttrace(src, points, max_ratio):
     print(f"sttrace压缩率 {max_ratio},耗时 {np.min(timelist)}")
     return compRes
 if __name__ == '__main__':
-    src_file = os.path.join(DATA_DIR, "infer_small.src")
+    src_file = os.path.join(DATA_DIR, "len250.src")
     with open('../../preprocess/pickle.txt', 'rb') as f:
         var_a = pickle.load(f)
     region = pickle.loads(var_a)
     points, src = readData(src_file, region)
-    for i in range(5):
+    for i in range(4, 5):
         ratio = 0.1 * (i + 1)
         compress_squish(src, points, ratio)
         compress_sttrace(src, points, ratio)
