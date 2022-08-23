@@ -420,6 +420,7 @@ class AttSeqDecoder(nn.Module):
         self.rnn_type = kwargs.get("rnn_type", "LSTM")
         self.gnn_latent_dim = kwargs.get("gnn_latent_dim", 128)
         self.gnn_used = kwargs.get("gnn_used", True)
+        self.attention_used = kwargs.get("attention", True)
 
         ############################################
         # Layers
@@ -477,8 +478,12 @@ class AttSeqDecoder(nn.Module):
         if self.input_feeding_learnt:
             self.Wi = nn.Linear(enc_size, self.ho_size)
 
-        # source context-aware output projection
-        self.Wc = nn.Linear(rnn_size + enc_size, self.ho_size)
+        if self.attention_used:
+            # source context-aware output projection
+            self.Wc = nn.Linear(rnn_size + enc_size, self.ho_size)
+        else:
+            # self.Wc = nn.Linear(rnn_size, self.ho_size)
+            self.Wc = nn.Linear(rnn_size + enc_size, self.ho_size)
 
         # self.Wc = nn.Linear(rnn_size + enc_size, tmp_size)
 
@@ -672,12 +677,16 @@ class AttSeqDecoder(nn.Module):
         outputs = self.rnn_dropout(outputs)
 
         # 3. generate the context vector
-        query = outputs.squeeze(1)
-        contexts, att_scores = self.attention(enc_outputs, query, enc_lengths, coverage=attn_coverage)
-        contexts = contexts.unsqueeze(1)
+        if self.attention_used:
+            query = outputs.squeeze(1)
+            contexts, att_scores = self.attention(enc_outputs, query, enc_lengths, coverage=attn_coverage)
+            contexts = contexts.unsqueeze(1)
 
-        # 4. Re-weight the decoder's state with the context vector.
-        ho = self.Wc(torch.cat([outputs, contexts], -1))
+            # 4. Re-weight the decoder's state with the context vector.
+            ho = self.Wc(torch.cat([outputs, contexts], -1))
+        else:
+            ho = torch.matmul(outputs,self.Wc.weight[:,:300].transpose(0,1))
+            att_scores = None
 
         if self.layer_norm:
             ho = self.norm_ctx(ho)
@@ -812,7 +821,10 @@ class AttSeqDecoder(nn.Module):
 
         outputs = torch.cat(outputs, dim=1).contiguous()
         logits = torch.cat(logits, dim=1).contiguous()
-        attentions = torch.stack(attentions, dim=1).contiguous()
+        if self.attention_used:
+            attentions = torch.stack(attentions, dim=1).contiguous()
+        else:
+            attentions = None
 
         if len(dists) > 0:
             dists = torch.stack(dists, dim=1).contiguous()

@@ -258,6 +258,13 @@ def draw_error(ori_traj, sim_traj, label):
             start = c
     return error, error_points, error_left, error_right, error_syn
 
+def any_op(X, metric):
+    if metric == 'sed':
+        sed_op(X)
+    elif metric == 'ped':
+        ped_op(X)
+    elif metric == 'dad':
+        dad_op(X)
 
 def draw(ori_traj, sim_traj, label='sed'):
     error, error_points, error_left, error_right, error_syn = draw_error(ori_traj, sim_traj, label)

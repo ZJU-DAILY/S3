@@ -3,6 +3,8 @@ from random import sample
 import sys
 from tracemalloc import start
 import numpy as np
+
+from generate.utils import sed_loss
 from models.constants import BOS
 
 sys.path.append('/home/hch/Desktop/trjcompress/modules/')
@@ -66,14 +68,14 @@ def load_model(path, checkpoint, src_file, device):
 
 def compress_seq3_online(data_loader, max_ratio, model, vocab, region, metric):
     timelist = []
-
+    batch_eval_metric_loss_seq3 = []
     iterator = enumerate(data_loader, 1)
     with torch.no_grad():
         for i, batch in iterator:
 
-            # print(f"batch {i}")
-            if i == 10:
-                break
+            print(f"batch {i}")
+            # if i == 10:
+            #     break
             batch = batch[:-1]
 
             batch = list(map(lambda x: x.to(device), batch))
@@ -88,13 +90,50 @@ def compress_seq3_online(data_loader, max_ratio, model, vocab, region, metric):
             mask_matrix[:, 0] = 0
             batch = (inp_src, out_src, inp_trg, out_trg,  # 1,L
                      src_lengths, trg_lengths)
-            start_time = time.time()
 
-            stream4batch(batch, model, mask_matrix, vocab, region, timelist)
-            excute_time = time.time() - start_time
-            timelist.append(excute_time / trg_lengths[0].item())
+            _, dec1, _, _ = stream4batch(batch, model, mask_matrix, vocab, region, timelist)
 
-    return np.mean(timelist)
+            for src_vid, _src_len, comp_vid, _trg_len in zip(inp_src, src_lengths, dec1[3].max(-1)[1], trg_lengths):
+
+                comp_vid = comp_vid[:_trg_len].tolist()
+                if 0 in comp_vid:
+                    print("comp_vid has zero,so we rollback...")
+                    continue
+                src_vid = src_vid[:_src_len]
+                complen = len(comp_vid)
+
+                comp_gid = [vocab.id2tok[p] for p in comp_vid]
+                src_gid = [vocab.id2tok[p.item()] for p in src_vid]
+                try:
+                    # points = [cell2meters(region, int(p)) for p in src_vid]
+                    points = [cell2gps(region, int(p)) for p in src_gid]
+                    # print("Our: \n",points)
+                    # Tea
+                    if metric == "ss":
+                        pass
+                        # s_loss_seq3 = sematic_simp(model, src_vid, comp_vid, vocab)
+                    else:
+                        mp_src = {num: i for i, num in enumerate(src_gid)}
+                        comp_sort_gid = comp_gid.copy()
+                        # comp_sort_gid = getCompress(region, src_gid, comp_gid)[0]
+                        comp_sort_gid.sort(key=lambda j: mp_src[j])
+                        if src_gid[-1] not in comp_sort_gid:
+                            comp_sort_gid.append(src_gid[-1])
+                            complen = len(comp_sort_gid)
+                        if src_gid[0] not in comp_sort_gid:
+                            comp_sort_gid.insert(0, src_gid[0])
+                            complen = len(comp_sort_gid)
+
+                        s_loss_seq3 = sed_loss(region, src_gid, comp_sort_gid, metric)
+
+                except Exception as e:
+                    print("exception occured")
+                    continue
+
+                batch_eval_metric_loss_seq3.append(s_loss_seq3)
+
+    print(np.mean(batch_eval_metric_loss_seq3))
+    # return np.mean(timelist)
 
 
 def stream4batch(batch, model, mask_matrix, vocab, region, timelist):
@@ -133,7 +172,8 @@ def stream4batch(batch, model, mask_matrix, vocab, region, timelist):
             # timelist.append(excute_time)
             _, _, cache_h, cache_out = outputs
             is_stream = True
-            break
+            # break
+    return outputs
 
 
 path = None
@@ -144,8 +184,8 @@ out_file = ""
 torch.manual_seed(seed)
 if torch.cuda.is_available():
     torch.cuda.manual_seed(seed)
-metric = "ss"
-datasets = "len250"
+metric = "dad"
+datasets = "infer"
 
 checkpoint = "seq3.full_-ped"
 
@@ -157,9 +197,9 @@ region = pickle.loads(var_a)
 data_loader, model, vocab = load_model(path, checkpoint, src_file, device)
 # --------------------------------------------------------------------
 # 1-5对应90%-50%的压缩率
-range_ = range(5, 6)
+range_ = range(1, 6)
 for ratio in range_:
     print(f"压缩率: {ratio / 10} \n------------------------")
     head = f"压缩率: {ratio / 10} \n------------------------\n"
-    res = compress_seq3_online(data_loader, ratio / 10, model, vocab, region, metric)
-    print(res)
+    compress_seq3_online(data_loader, ratio / 10, model, vocab, region, metric)
+    # print(res)

@@ -2,12 +2,13 @@ import pickle
 import time
 import numpy as np
 
-from generate.utils import getPED4GPS
+from generate.utils import getPED4GPS, getMaxError
 from preprocess.SpatialRegionTools import cell2gps
 import os
 from preprocess.SpatialRegionTools import SpacialRegion
 from sys_config import DATA_DIR
 from generate.online.squish_e import squish_e
+
 
 # squish压缩算法
 def squish(points, max_buffer_size):
@@ -44,9 +45,10 @@ def squish(points, max_buffer_size):
     return pp, idx, max_err
 
 
-def STTrace(points, max_buffer_size):
+def STTrace(points, max_buffer_size, mode):
     buffer = []
     buffer.append([points[0], 0])
+    max_err = 0
     if max_buffer_size > 2:
         buffer.append([points[1], 0])
         for i in range(2, len(points)):
@@ -59,22 +61,32 @@ def STTrace(points, max_buffer_size):
                 to_remove = buffer[len(buffer) - 1]
                 min_idx = 1
                 k = 1
-                for i in range(1,len(buffer) - 1):
+                for i in range(1, len(buffer) - 1):
                     p = buffer[i]
                     if to_remove == buffer[len(buffer) - 1] or p[1] < to_remove[1]:
                         to_remove = p
                         k += 1
                 if min_idx - 1 > 0:
                     buffer[min_idx - 1][1] = getPED4GPS(buffer[min_idx - 1][0], buffer[min_idx - 2][0],
-                                                         buffer[min_idx + 1][0])
+                                                        buffer[min_idx + 1][0])
                 if min_idx + 1 < len(buffer) - 1:
                     buffer[min_idx + 1][1] = getPED4GPS(buffer[min_idx + 1][0], buffer[min_idx - 1][0],
-                                                         buffer[min_idx + 2][0])
+                                                        buffer[min_idx + 2][0])
                 buffer.remove(to_remove)
 
     else:
         buffer.append([points[len(points) - 1], 0])
-    return buffer
+    idx = []
+    for i in range(len(buffer)):
+        idx.append(points.index(buffer[i][0]))
+    idx.sort()
+
+    for i in range(len(idx) - 1):
+        st = idx[i]
+        en = idx[i + 1]
+        _, err = getMaxError(st, en, points, mode)
+        max_err = max(max_err, err)
+    return None, idx, max_err
 
 
 def readData(src_file, region):
@@ -97,13 +109,10 @@ def readData(src_file, region):
     return points, src
 
 
-
-
-def compress_squish(src, points, max_ratio):
+def compress_squish(src, points, max_ratio, metric):
     # 计时开始
 
     err = []
-    key = []
     compRes = []
     timelist = []
     timelist2 = []
@@ -112,63 +121,72 @@ def compress_squish(src, points, max_ratio):
         _, idx, maxErr = squish(seq, int(max_ratio * len(seq)))
         tic2 = time.time()
         timelist.append((tic2 - tic1) / len(seq))
+        maxErr_ = 0
+        for i in range(len(idx) - 1):
+            _, e = getMaxError(idx[i], idx[i + 1], seq, metric)
+            maxErr_ = max(maxErr_, e)
+        err.append(maxErr_)
 
-        tic1 = time.time()
-        squish_e(maxErr, seq)
-        tic2 = time.time()
-        timelist2.append((tic2 - tic1) / len(seq))
-        r_ = 0
-        key.append(r_ / len(idx))
-        err.append(maxErr)
-
-    print(f"squish压缩率 {max_ratio},耗时 {np.min(timelist)}")
-    print(f"squish-e压缩率 {max_ratio},耗时 {np.min(timelist2)}")
+    print(f"squish压缩率 {max_ratio},耗时 {np.min(timelist)}, error {np.mean(err)}")
+    # print(f"squish-e压缩率 {max_ratio},耗时 {np.min(timelist2)}")
     return compRes
 
-def compress_squish_e(src, points, max_ratio):
+
+def compress_squish_e(src, points, max_ratio, metric):
     # 计时开始
 
     err = []
-    key = []
     compRes = []
     timelist = []
     for idseq, seq in zip(src, points):
         tic1 = time.time()
-        _, idx, maxErr = squish(seq, int(max_ratio * len(seq)))
+        try:
+            _, idx, maxErr = squish_e(seq, int(max_ratio * len(seq)), mode='ped')
+        except Exception as e:
+            continue
         tic2 = time.time()
         timelist.append((tic2 - tic1) / len(seq))
-        r_ = 0
-        key.append(r_ / len(idx))
-        err.append(maxErr)
+        maxErr_ = 0
+        for i in range(len(idx) - 1):
+            _, e = getMaxError(idx[i], idx[i + 1], seq, metric)
+            maxErr_ = max(maxErr_, e)
+        err.append(maxErr_)
 
-    print(f"压缩率 {max_ratio},耗时 {np.min(timelist)}")
+    print(f"squish_e压缩率 {max_ratio},耗时 {0}, error {np.mean(err)}")
     return compRes
 
-def compress_sttrace(src, points, max_ratio):
+
+def compress_sttrace(src, points, max_ratio, metric):
     # 计时开始
 
     err = []
-    key = []
     compRes = []
     timelist = []
     for idseq, seq in zip(src, points):
         tic1 = time.time()
-        STTrace(seq, int(max_ratio * len(seq)))
+        _, idx, maxErr = STTrace(seq, int(max_ratio * len(seq)), mode='ped')
         tic2 = time.time()
         timelist.append((tic2 - tic1) / len(seq))
-        r_ = 0
-        # key.append(r_ / len(idx))
-        # err.append(maxErr)
+        maxErr_ = 0
+        for i in range(len(idx) - 1):
+            _, e = getMaxError(idx[i], idx[i + 1], seq, metric)
+            maxErr_ = max(maxErr_, e)
+        err.append(maxErr_)
 
-    print(f"sttrace压缩率 {max_ratio},耗时 {np.min(timelist)}")
+    print(f"sttrace压缩率 {max_ratio},耗时 {np.min(timelist)}, error {np.mean(err)}")
     return compRes
+
+
 if __name__ == '__main__':
-    src_file = os.path.join(DATA_DIR, "len250.src")
+    src_file = os.path.join(DATA_DIR, "infer.src")
     with open('../../preprocess/pickle.txt', 'rb') as f:
         var_a = pickle.load(f)
     region = pickle.loads(var_a)
     points, src = readData(src_file, region)
-    for i in range(4, 5):
+    metric = 'dad'
+    for i in range(0, 5):
         ratio = 0.1 * (i + 1)
-        compress_squish(src, points, ratio)
-        compress_sttrace(src, points, ratio)
+        compress_sttrace(src, points, ratio, metric)
+        compress_squish(src, points, ratio, metric)
+        compress_squish_e(src, points, ratio, metric)
+

@@ -147,4 +147,4 @@ model:
   tau_0: 0.5        # Hyper-parameter that controls the upper-bound of the temperature.
   mask: True
   mask_fn: trj      #option: area or trj.
-  metric: sed
+  metric: ss
