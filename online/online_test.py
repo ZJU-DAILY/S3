@@ -1,15 +1,17 @@
 import os
 from random import sample
 import sys
+sys.path.append('/home/hch/Desktop/trjcompress/')
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from tracemalloc import start
 import numpy as np
 
+from generate.online.OnlineCED import CEDer
 from generate.utils import sed_loss
 from models.constants import BOS
 
-sys.path.append('/home/hch/Desktop/trjcompress/modules/')
-sys.path.append('/home/hch/Desktop/trjcompress/RLOnline/')
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 
 import pickle
 import time
@@ -109,21 +111,24 @@ def compress_seq3_online(data_loader, max_ratio, model, vocab, region, metric):
                     points = [cell2gps(region, int(p)) for p in src_gid]
                     # print("Our: \n",points)
                     # Tea
-                    if metric == "ss":
-                        pass
-                        # s_loss_seq3 = sematic_simp(model, src_vid, comp_vid, vocab)
-                    else:
-                        mp_src = {num: i for i, num in enumerate(src_gid)}
-                        comp_sort_gid = comp_gid.copy()
-                        # comp_sort_gid = getCompress(region, src_gid, comp_gid)[0]
-                        comp_sort_gid.sort(key=lambda j: mp_src[j])
-                        if src_gid[-1] not in comp_sort_gid:
-                            comp_sort_gid.append(src_gid[-1])
-                            complen = len(comp_sort_gid)
-                        if src_gid[0] not in comp_sort_gid:
-                            comp_sort_gid.insert(0, src_gid[0])
-                            complen = len(comp_sort_gid)
+                    mp_src = {num: i for i, num in enumerate(src_gid)}
+                    comp_sort_gid = comp_gid.copy()
+                    # comp_sort_gid = getCompress(region, src_gid, comp_gid)[0]
+                    comp_sort_gid.sort(key=lambda j: mp_src[j])
+                    if src_gid[-1] not in comp_sort_gid:
+                        comp_sort_gid.append(src_gid[-1])
+                        comp_vid.append(src_vid[-1])
+                        complen = len(comp_sort_gid)
+                    if src_gid[0] not in comp_sort_gid:
+                        comp_sort_gid.insert(0, src_gid[0])
+                        comp_vid.insert(0, src_vid[0])
+                        complen = len(comp_sort_gid)
 
+                    if metric == "ss":
+                        # s_loss_seq3 = sematic_simp(model, src_vid, comp_vid, vocab)
+                        idx = [src_gid.index(i) for i in comp_sort_gid]
+                        s_loss_seq3 = ceder.CED_op(idx, src_gid)
+                    else:
                         s_loss_seq3 = sed_loss(region, src_gid, comp_sort_gid, metric)
 
                 except Exception as e:
@@ -184,8 +189,8 @@ out_file = ""
 torch.manual_seed(seed)
 if torch.cuda.is_available():
     torch.cuda.manual_seed(seed)
-metric = "ped"
-datasets = "eval"
+metric = "ss"
+datasets = "infer"
 
 checkpoint = "seq3.full_-ped"
 
@@ -195,6 +200,7 @@ with open(os.path.join(DATA_DIR, 'pickle.txt'), 'rb') as f:
 region = pickle.loads(var_a)
 
 data_loader, model, vocab = load_model(path, checkpoint, src_file, device)
+ceder = CEDer()
 # --------------------------------------------------------------------
 # 1-5对应90%-50%的压缩率
 range_ = range(1, 6)

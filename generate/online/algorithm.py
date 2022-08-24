@@ -1,3 +1,9 @@
+import os
+import sys
+
+sys.path.append('/home/hch/Desktop/trjcompress/')
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import pickle
 import time
 import numpy as np
@@ -204,6 +210,8 @@ def compress_sttrace(src, points, max_ratio, metric):
 class RLAgent:
     def __init__(self, datasets, region, dataSize, metric):
         self.traj_path = os.path.join(DATA_DIR, datasets + ".src")
+        if metric == "ss":
+            metric = "ped"
 
         a_size = 3  # RLTS 3, RLTS-Skip 5
         s_size = 3  # RLTS and RLTS-Skip are both 3 online
@@ -222,8 +230,7 @@ class RLAgent:
                 done = True
             else:
                 done = False
-            action = self.RL.quick_time_action(
-                observation)  # matrix implementation for fast efficiency when the model is ready
+            action = self.RL.quick_time_action(observation)  # matrix implementation for fast efficiency when the model is ready
             observation_, _ = self.env.step(episode, action, index, done,
                                             'V')  # 'T' means Training, and 'V' means Validation
             observation = observation_
@@ -234,7 +241,7 @@ class RLAgent:
         tm = (tic2 - tic1) / len(self.env.ori_traj_set[episode])
         return None, idx, max_err
 
-    def run_all(self, size, ratio):
+    def run_all(self, size, ratio, metric):
         err = []
         for i in range(size):
             buffer_size = int(ratio * len(self.env.ori_traj_set[i]))
@@ -260,9 +267,9 @@ if __name__ == '__main__':
     agent = RLAgent(datasets, region, len(points), metric)
     ceder = CEDer()
 
-    for i in range(0, 5):
+    for i in range(4, 5):
         ratio = 0.1 * (i + 1)
-        # compress_sttrace(src, points, ratio, metric)
+        compress_sttrace(src, points, ratio, metric)
         compress_squish(src, points, ratio, metric)
-        # compress_squish_e(src, points, ratio, metric)
-        # agent.run_all(len(points), ratio)
+        compress_squish_e(src, points, ratio, metric)
+        agent.run_all(len(points), ratio, metric)

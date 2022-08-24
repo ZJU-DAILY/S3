@@ -9,7 +9,7 @@ import os
 import sys
 
 sys.path.append('/home/hch/Desktop/trjcompress/modules/')
-sys.path.append('/home/hch/Desktop/trjcompress/RLOnline/')
+sys.path.append('/home/hch/Desktop/trjcompress/RL/')
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pickle
