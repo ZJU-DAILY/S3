@@ -3,9 +3,8 @@ import sys
 
 sys.path.append('/home/hch/RLTS/')
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from rl_env_inc import TrajComp
-from rl_brain import PolicyGradient
-import matplotlib.pyplot as plt
+from generate.online.RLOnline.rl_env_inc import TrajComp
+from generate.online.RLOnline.rl_brain import PolicyGradient
 import time
 
 def run_online(elist): # Validation
@@ -24,7 +23,7 @@ def run_online(elist): # Validation
             else:
                 done = False
             action = RL.fix_choose_action(observation)
-            #action = RL.quick_time_action(observation) #use it when your model is ready for efficiency
+            #action = RLOnline.quick_time_action(observation) #use it when your model is ready for efficiency
             observation_, _ = env.step(episode, action, index, done, 'V') #'T' means Training, and 'V' means Validation
             observation = observation_
         eva.append(env.output(episode, 'V')) #'T' means Training, 'V' means Validation, and 'V-VIS' for visualization on Validation
@@ -51,10 +50,10 @@ def run_comp(): #Training
                 else:
                     done = False
                 
-                # RL choose action based on observation
+                # RLOnline choose action based on observation
                 action = RL.pro_choose_action(observation)
                 #print('action', action)
-                # RL take action and get next observation and reward
+                # RLOnline take action and get next observation and reward
                 observation_, reward = env.step(episode, action, index, done, 'T') #'T' means Training, and 'V' means Validation
                 
                 RL.store_transition(observation, action, reward)
@@ -90,7 +89,7 @@ if __name__ == "__main__":
     ratio = 0.1
     env = TrajComp(traj_path, traj_amount + valid_amount, a_size, s_size)
     RL = PolicyGradient(env.n_features, env.n_actions)
-    #RL.load('./save/your_model/')
+    #RLOnline.load('./save/your_model/')
     start = time.time()
     training, validation = run_comp()
     print("Training elapsed time = %s", float(time.time() - start))

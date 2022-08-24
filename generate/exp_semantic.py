@@ -9,14 +9,14 @@ import os
 import sys
 
 sys.path.append('/home/hch/Desktop/trjcompress/modules/')
-sys.path.append('/home/hch/Desktop/trjcompress/RL/')
+sys.path.append('/home/hch/Desktop/trjcompress/RLOnline/')
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pickle
 import time
 
 from modules.helpers import sequence_mask
-from generate.utils import getCompress, sed_loss
+from generate.utils import getCompress, sed_loss, sematic_simp
 
 from preprocess.SpatialRegionTools import cell2gps, cell2meters
 from sys_config import DATA_DIR
@@ -30,7 +30,7 @@ from modules.models import Seq2Seq2Seq
 from utils.training import load_checkpoint
 import numpy as np
 from generate.batch.algorithm import adp, error_search_algorithm, bellman, btup
-from models.seq3_losses import r
+
 from models.constants import minerr
 
 from RL.rl_env_inc import TrajComp
@@ -95,47 +95,6 @@ def sematic_cal(model, inp, dec1, src_lengths, trg_lengths, vocab):
     # print(sim,sim_2)
     return (np.array(sim) + np.array(sim_2)) / 2
 
-
-# src和comp可以都是list
-def sematic_simp(model, src, comp, vocab):
-    src_len = len(src)
-    comp_len = len(comp)
-
-    # src = [vocab.tok2id.get(i, 0) for i in src]
-    # comp = [vocab.tok2id.get(i, 0) for i in comp]
-
-    # src = torch.tensor(src).to(device)
-    src = src.view(1, src.size(0))
-
-    comp = torch.tensor(comp).to(device)
-    comp = comp.view(1, comp.size(0))
-
-    enc_embs = model.inp_encoder.embed(src, vocab)
-    dec_embs = model.compressor.embed(comp, vocab)
-
-    # 先对source序列中的点进行遍历
-    sim = 0
-    for i in range(src_len):
-        batch_p = enc_embs[:, i, :]
-        batch_trj = dec_embs
-        tmp = r(batch_p, batch_trj)
-        sim += tmp
-        # sim += tmp[0]
-    # 计算的是所有batch的
-    sim = sim / src_len
-
-    # 接下来对trg_src做类似的处理
-    sim_2 = 0
-    for i in range(comp_len):
-        batch_p = dec_embs[:, i, :]
-        batch_trj = enc_embs
-        tmp = r(batch_p, batch_trj)
-        sim_2 += tmp
-        # sim_2 += tmp[0]
-    # 计算的是所有batch的
-    sim_2 = sim_2 / comp_len
-    # print(sim,sim_2)
-    return (sim + sim_2) / 2
 
 
 def seq2str(seq):
@@ -340,7 +299,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                 #     s_loss_btup = maxErr
                 # batch_eval_metric_loss_btup.append(s_loss_btup)
                 #
-                # # RL
+                # # RLOnline
                 # if metric == "ss":
                 #     tic1 = time.perf_counter()
                 #     idx, maxErr = RL_algorithm(complen, ik)
@@ -400,7 +359,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
     # print(f"TDTR\t|\t推理用时:\t{time_adp}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_adp)}")
     # print(f"Error Search\t|\t推理用时:\t{time_error_search}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_error_search)}")
     # print(f"Bottom up\t|\t推理用时:\t{time_btup} |\t{metric}:\t{np.mean(batch_eval_metric_loss_btup)}")
-    # print(f"RL\t|\t推理用时:\t{time_RL} |\t{metric}:\t{np.mean(batch_eval_metric_loss_RL)}")
+    # print(f"RLOnline\t|\t推理用时:\t{time_RL} |\t{metric}:\t{np.mean(batch_eval_metric_loss_RL)}")
     # print(f"bellman\t|\t推理用时:\t{time_bellman} |\t{metric}:\t{np.mean(batch_eval_metric_loss_bellman)}")
     #
 
@@ -408,75 +367,76 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
           f"TDTR\t|\t推理用时:\t{time_adp}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_adp)}\n" \
           f"Error Search\t|\t推理用时:\t{time_error_search}\t|\t{metric}:\t{np.mean(batch_eval_metric_loss_error_search)}\n" \
           f"Bottom up\t|\t推理用时:\t{time_btup} |\t{metric}:\t{np.mean(batch_eval_metric_loss_btup)}\n" \
-          f"RL\t|\t推理用时:\t{time_RL} |\t{metric}:\t{np.mean(batch_eval_metric_loss_RL)}\n" \
+          f"RLOnline\t|\t推理用时:\t{time_RL} |\t{metric}:\t{np.mean(batch_eval_metric_loss_RL)}\n" \
           f"bellman\t|\t推理用时:\t{time_bellman} |\t{metric}:\t{np.mean(batch_eval_metric_loss_bellman)}\n" \
           f"span_search\t|\t推理用时:\t{time_bellman} |\t{metric}:\t{np.mean(batch_eval_metric_loss_span_search)}\n"
     print(res)
     return time_res + res
 
 
-path = None
-seed = 1
-device = "cuda"
-verbose = True
-out_file = ""
-torch.manual_seed(seed)
-if torch.cuda.is_available():
-    torch.cuda.manual_seed(seed)
+if __name__ == '__main__':
+    path = None
+    seed = 1
+    device = "cuda"
+    verbose = True
+    out_file = ""
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
 
-# metrics = ['ped','sed','ss']
-# datasets = ['geolife','tdrive']
-#
-# for meritc in metrics:
-#     for dataset in datasets:
-#         checkpoint = "seq3.full_" + dataset + "-" + meritc
-metric = sys.argv[1]
-datasets = sys.argv[2]
+    # metrics = ['ped','sed','ss']
+    # datasets = ['geolife','tdrive']
+    #
+    # for meritc in metrics:
+    #     for dataset in datasets:
+    #         checkpoint = "seq3.full_" + dataset + "-" + meritc
+    metric = sys.argv[1]
+    datasets = sys.argv[2]
 
-if metric == 'ped' or metric == 'dad':
-    checkpoint = "seq3.full_-ped-tdrive"
-    # checkpoint = "seq3.full_-sed-tdrive"
-    # checkpoint = "seq3.full_-ped"
-elif metric == 'sed':
-    # checkpoint = "seq3.full_-sed-tdrive"
-    checkpoint = "seq3.full_-sed"
-    # checkpoint = "seq3.full_-noAttn"
-elif metric == 'ss':
-    # checkpoint = "seq3.full_-noAttn"
-    checkpoint = "seq3.full_-valid"
-    # checkpoint = "seq3.full_-valid-tdrive"
-    # checkpoint = "seq3.full_-noGraph"
+    if metric == 'ped' or metric == 'dad':
+        checkpoint = "seq3.full_-ped-tdrive"
+        # checkpoint = "seq3.full_-sed-tdrive"
+        # checkpoint = "seq3.full_-ped"
+    elif metric == 'sed':
+        # checkpoint = "seq3.full_-sed-tdrive"
+        checkpoint = "seq3.full_-sed"
+        # checkpoint = "seq3.full_-noAttn"
+    elif metric == 'ss':
+        # checkpoint = "seq3.full_-noAttn"
+        checkpoint = "seq3.full_-valid"
+        # checkpoint = "seq3.full_-valid-tdrive"
+        # checkpoint = "seq3.full_-noGraph"
 
-src_file = os.path.join(DATA_DIR, datasets + ".src")
-with open(os.path.join(DATA_DIR, 'pickle.txt'), 'rb') as f:
-    var_a = pickle.load(f)
-region = pickle.loads(var_a)
+    src_file = os.path.join(DATA_DIR, datasets + ".src")
+    with open(os.path.join(DATA_DIR, 'pickle.txt'), 'rb') as f:
+        var_a = pickle.load(f)
+    region = pickle.loads(var_a)
 
-data_loader, model, vocab = load_model(path, checkpoint, src_file, device)
+    data_loader, model, vocab = load_model(path, checkpoint, src_file, device)
 
-# ----------------------------------------------------------------
-# RL model init
-traj_path = src_file
-test_amount = 1000
-elist = [i for i in range(test_amount)]
-a_size = 3  # RLTS 3, RLTS-Skip 5
-s_size = 3  # RLTS 3, RLTS-Skip 5
-ratio = 0.1
-if metric == 'ss':
-    env = TrajComp(traj_path, 1000, region, a_size, s_size, 'sed')
-else:
-    env = TrajComp(traj_path, 1000, region, a_size, s_size, metric)
-RL = PolicyGradient(env.n_features, env.n_actions)
-RL.load('../RL/save/0.00039190653824900003_ratio_0.1/')  # your_trained_model your_trained_model_skip
+    # ----------------------------------------------------------------
+    # RLOnline model init
+    traj_path = src_file
+    test_amount = 1000
+    elist = [i for i in range(test_amount)]
+    a_size = 3  # RLTS 3, RLTS-Skip 5
+    s_size = 3  # RLTS 3, RLTS-Skip 5
+    ratio = 0.1
+    if metric == 'ss':
+        env = TrajComp(traj_path, 1000, region, a_size, s_size, 'sed')
+    else:
+        env = TrajComp(traj_path, 1000, region, a_size, s_size, metric)
+    RL = PolicyGradient(env.n_features, env.n_actions)
+    RL.load('../RL/save/0.00039190653824900003_ratio_0.1/')  # your_trained_model your_trained_model_skip
 
-# --------------------------------------------------------------------
-with open(f"../experiments/result_{checkpoint}_{metric}_{datasets}_x_0818_time", "a") as f:
-    # 1-5对应90%-50%的压缩率
-    range_ = range(1, 6)
-    for ratio in range_:
-        print(f"压缩率: {ratio / 10} \n------------------------")
-        head = f"压缩率: {ratio / 10} \n------------------------\n"
-        res = compress_seq3(data_loader, ratio / 10, model, vocab, region, metric)
-        f.write(head + res + "\n")
+    # --------------------------------------------------------------------
+    with open(f"../experiments/result_{checkpoint}_{metric}_{datasets}_x_0818_time", "a") as f:
+        # 1-5对应90%-50%的压缩率
+        range_ = range(1, 6)
+        for ratio in range_:
+            print(f"压缩率: {ratio / 10} \n------------------------")
+            head = f"压缩率: {ratio / 10} \n------------------------\n"
+            res = compress_seq3(data_loader, ratio / 10, model, vocab, region, metric)
+            f.write(head + res + "\n")
 
 

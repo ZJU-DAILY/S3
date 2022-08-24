@@ -15,7 +15,7 @@ from modules.models import Seq2Seq2Seq
 from preprocess.SpatialRegionTools import cell2gps
 from utils.training import load_checkpoint
 import numpy as np
-
+from models.seq3_losses import r
 
 def cleanTrj(src):
     res = []
@@ -458,4 +458,46 @@ def sed_loss(region, src, trg, mode):
 #
 #     return loss, comp_trj
 
+# src和comp可以都是list
+def sematic_simp(model, src, comp, vocab):
+    src_len = len(src)
+    comp_len = len(comp)
+
+    # src = [vocab.tok2id.get(i, 0) for i in src]
+    # comp = [vocab.tok2id.get(i, 0) for i in comp]
+
+    # src = torch.tensor(src).to(device)
+    if isinstance(src, list):
+        src = torch.tensor(src).to('cuda')
+    src = src.view(1, src.size(0))
+
+    comp = torch.tensor(comp).to("cuda")
+    comp = comp.view(1, comp.size(0))
+
+    enc_embs = model.inp_encoder.embed(src, vocab)
+    dec_embs = model.compressor.embed(comp, vocab)
+
+    # 先对source序列中的点进行遍历
+    sim = 0
+    for i in range(src_len):
+        batch_p = enc_embs[:, i, :]
+        batch_trj = dec_embs
+        tmp = r(batch_p, batch_trj)
+        sim += tmp
+        # sim += tmp[0]
+    # 计算的是所有batch的
+    sim = sim / src_len
+
+    # 接下来对trg_src做类似的处理
+    sim_2 = 0
+    for i in range(comp_len):
+        batch_p = dec_embs[:, i, :]
+        batch_trj = enc_embs
+        tmp = r(batch_p, batch_trj)
+        sim_2 += tmp
+        # sim_2 += tmp[0]
+    # 计算的是所有batch的
+    sim_2 = sim_2 / comp_len
+    # print(sim,sim_2)
+    return (sim + sim_2) / 2
 

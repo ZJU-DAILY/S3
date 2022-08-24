@@ -1,11 +1,12 @@
-from rl_env_inc import TrajComp
-from rl_brain import PolicyGradient
-import matplotlib.pyplot as plt
+from generate.online.RLOnline.rl_env_inc_skip import TrajComp
+from generate.online.RLOnline.rl_brain import PolicyGradient
 import time
 
-def run_online(elist): # Validation
+def run_online(elist):
     eva = []
     total_len = []
+    skip_pts = 0
+    step_pts = 0
     for episode in elist:
         #print('online episode', episode)
         total_len.append(len(env.ori_traj_set[episode]))
@@ -13,19 +14,24 @@ def run_online(elist): # Validation
         if buffer_size < 3:
             continue
         steps, observation = env.reset(episode, buffer_size)
+        step_pts = step_pts + steps
         for index in range(buffer_size, steps):
             if index == steps - 1:
                 done = True
             else:
                 done = False
+            if index < env.INX:
+                #print('test skip')
+                skip_pts = skip_pts + 1
+                continue
             action = RL.pro_choose_action(observation)
-            #action = RL.quick_time_action(observation) #use it when your model is ready for efficiency
+            #action = RLOnline.quick_time_action(observation) #use it when your model is ready for efficiency
             observation_, _ = env.step(episode, action, index, done, 'V') #'T' means Training, and 'V' means Validation
             observation = observation_
         eva.append(env.output(episode, 'V')) #'T' means Training, 'V' means Validation, and 'V-VIS' for visualization on Validation
     return eva
         
-def run_comp(): #Training
+def run_comp():
     check = 999999
     training = []
     validation = []
@@ -35,7 +41,6 @@ def run_comp(): #Training
         for episode in range(0, traj_amount):
             #print('training', episode)
             buffer_size = int(ratio*len(env.ori_traj_set[episode]))
-            # extreme cases
             if buffer_size < 3:
                 continue
             steps, observation = env.reset(episode, buffer_size)
@@ -45,11 +50,13 @@ def run_comp(): #Training
                     done = True
                 else:
                     done = False
-                
-                # RL choose action based on observation
+                if index < env.INX:
+                    #print('train skip')
+                    continue
+                # RLOnline choose action based on observation
                 action = RL.pro_choose_action(observation)
                 #print('action', action)
-                # RL take action and get next observation and reward
+                # RLOnline take action and get next observation and reward
                 observation_, reward = env.step(episode, action, index, done, 'T') #'T' means Training, and 'V' means Validation
                 
                 RL.store_transition(observation, action, reward)
@@ -80,12 +87,13 @@ if __name__ == "__main__":
     traj_path = '../TrajData/Geolife_out/'
     traj_amount = 1000
     valid_amount = 100
-    a_size = 3
+    skip_size = 2
+    a_size = 3 + skip_size
     s_size = 3
     ratio = 0.1
     env = TrajComp(traj_path, traj_amount + valid_amount, a_size, s_size)
     RL = PolicyGradient(env.n_features, env.n_actions)
-    #RL.load('./save/your_model/')
+    #RLOnline.load('./save/your_model/')
     start = time.time()
     training, validation = run_comp()
     print("Training elapsed time = %s", float(time.time() - start))

@@ -2,12 +2,15 @@ import pickle
 import time
 import numpy as np
 
+from generate.online.RLOnline.rl_brain import PolicyGradient
+from generate.online.RLOnline.rl_env_inc import TrajComp
 from generate.utils import getPED4GPS, getMaxError
 from preprocess.SpatialRegionTools import cell2gps
 import os
 from preprocess.SpatialRegionTools import SpacialRegion
 from sys_config import DATA_DIR
 from generate.online.squish_e import squish_e
+from generate.online.OnlineCED import CEDer
 
 
 # squish压缩算法
@@ -122,9 +125,16 @@ def compress_squish(src, points, max_ratio, metric):
         tic2 = time.time()
         timelist.append((tic2 - tic1) / len(seq))
         maxErr_ = 0
-        for i in range(len(idx) - 1):
-            _, e = getMaxError(idx[i], idx[i + 1], seq, metric)
-            maxErr_ = max(maxErr_, e)
+        if metric != 'ss':
+            for i in range(len(idx) - 1):
+                _, e = getMaxError(idx[i], idx[i + 1], seq, metric)
+                maxErr_ = max(maxErr_, e)
+        else:
+            try:
+                maxErr_ = ceder.CED_op(idx, idseq)
+            except Exception as e:
+                print("exception")
+                continue
         err.append(maxErr_)
 
     print(f"squish压缩率 {max_ratio},耗时 {np.min(timelist)}, error {np.mean(err)}")
@@ -147,9 +157,16 @@ def compress_squish_e(src, points, max_ratio, metric):
         tic2 = time.time()
         timelist.append((tic2 - tic1) / len(seq))
         maxErr_ = 0
-        for i in range(len(idx) - 1):
-            _, e = getMaxError(idx[i], idx[i + 1], seq, metric)
-            maxErr_ = max(maxErr_, e)
+        if metric != 'ss':
+            for i in range(len(idx) - 1):
+                _, e = getMaxError(idx[i], idx[i + 1], seq, metric)
+                maxErr_ = max(maxErr_, e)
+        else:
+            try:
+                maxErr_ = ceder.CED_op(idx, idseq)
+            except Exception as e:
+                print("exception")
+                continue
         err.append(maxErr_)
 
     print(f"squish_e压缩率 {max_ratio},耗时 {0}, error {np.mean(err)}")
@@ -168,25 +185,84 @@ def compress_sttrace(src, points, max_ratio, metric):
         tic2 = time.time()
         timelist.append((tic2 - tic1) / len(seq))
         maxErr_ = 0
-        for i in range(len(idx) - 1):
-            _, e = getMaxError(idx[i], idx[i + 1], seq, metric)
-            maxErr_ = max(maxErr_, e)
+        if metric != 'ss':
+            for i in range(len(idx) - 1):
+                _, e = getMaxError(idx[i], idx[i + 1], seq, metric)
+                maxErr_ = max(maxErr_, e)
+        else:
+            try:
+                maxErr_ = ceder.CED_op(idx, idseq)
+            except Exception as e:
+                print("exception")
+                continue
         err.append(maxErr_)
 
     print(f"sttrace压缩率 {max_ratio},耗时 {np.min(timelist)}, error {np.mean(err)}")
     return compRes
 
 
+class RLAgent:
+    def __init__(self, datasets, region, dataSize, metric):
+        self.traj_path = os.path.join(DATA_DIR, datasets + ".src")
+
+        a_size = 3  # RLTS 3, RLTS-Skip 5
+        s_size = 3  # RLTS and RLTS-Skip are both 3 online
+        self.env = TrajComp(self.traj_path, dataSize, region, a_size, s_size, metric)
+        self.RL = PolicyGradient(self.env.n_features, self.env.n_actions)
+        self.RL.load(
+            '/home/hch/Desktop/trjcompress/generate/online/online-rlts/save/0.00051169259094067_ratio_0.1/')  # your_trained_model your_trained_model_skip
+
+    def RL_online(self, buffer_size, episode):
+        if buffer_size < 3:
+            return
+        steps, observation = self.env.reset(episode, buffer_size)
+        tic1 = time.perf_counter()
+        for index in range(buffer_size, steps):
+            if index == steps - 1:
+                done = True
+            else:
+                done = False
+            action = self.RL.quick_time_action(
+                observation)  # matrix implementation for fast efficiency when the model is ready
+            observation_, _ = self.env.step(episode, action, index, done,
+                                            'V')  # 'T' means Training, and 'V' means Validation
+            observation = observation_
+        tic2 = time.perf_counter()
+        idx, max_err = self.env.output(episode, 'V')
+        if idx[-1] == steps:
+            idx, max_err = self.env.output(episode, 'V')
+        tm = (tic2 - tic1) / len(self.env.ori_traj_set[episode])
+        return None, idx, max_err
+
+    def run_all(self, size, ratio):
+        err = []
+        for i in range(size):
+            buffer_size = int(ratio * len(self.env.ori_traj_set[i]))
+            _, idx, max_err = self.RL_online(buffer_size, i)
+            if metric == 'ss':
+                try:
+                    max_err = ceder.CED_op(idx, self.env.ori_trajID_set[i])
+                except Exception as e:
+                    print("exception")
+                    continue
+            err.append(max_err)
+        print(f"rlts压缩率 {ratio}, error {np.mean(err)}")
+
+
 if __name__ == '__main__':
-    src_file = os.path.join(DATA_DIR, "infer.src")
-    with open('../../preprocess/pickle.txt', 'rb') as f:
+    datasets = "infer"
+    src_file = os.path.join(DATA_DIR, datasets + ".src")
+    with open(os.path.join(DATA_DIR, 'pickle.txt'), 'rb') as f:
         var_a = pickle.load(f)
     region = pickle.loads(var_a)
     points, src = readData(src_file, region)
-    metric = 'dad'
+    metric = 'ss'
+    agent = RLAgent(datasets, region, len(points), metric)
+    ceder = CEDer()
+
     for i in range(0, 5):
         ratio = 0.1 * (i + 1)
-        compress_sttrace(src, points, ratio, metric)
+        # compress_sttrace(src, points, ratio, metric)
         compress_squish(src, points, ratio, metric)
-        compress_squish_e(src, points, ratio, metric)
-
+        # compress_squish_e(src, points, ratio, metric)
+        # agent.run_all(len(points), ratio)

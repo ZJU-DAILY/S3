@@ -1,7 +1,6 @@
-from rl_env_inc import TrajComp
+from generate.online.RLOnline.rl_env_inc import TrajComp
 # from rl_env_inc_skip import TrajComp
-from rl_brain import PolicyGradient
-import matplotlib.pyplot as plt
+from generate.online.RLOnline.rl_brain import PolicyGradient
 
 
 def evaluate(elist):  # Evaluation

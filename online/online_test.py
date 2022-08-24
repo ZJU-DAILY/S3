@@ -8,7 +8,7 @@ from generate.utils import sed_loss
 from models.constants import BOS
 
 sys.path.append('/home/hch/Desktop/trjcompress/modules/')
-sys.path.append('/home/hch/Desktop/trjcompress/RL/')
+sys.path.append('/home/hch/Desktop/trjcompress/RLOnline/')
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pickle
@@ -184,13 +184,13 @@ out_file = ""
 torch.manual_seed(seed)
 if torch.cuda.is_available():
     torch.cuda.manual_seed(seed)
-metric = "dad"
-datasets = "infer"
+metric = "ped"
+datasets = "eval"
 
 checkpoint = "seq3.full_-ped"
 
 src_file = os.path.join(DATA_DIR, datasets + ".src")
-with open('../preprocess/pickle.txt', 'rb') as f:
+with open(os.path.join(DATA_DIR, 'pickle.txt'), 'rb') as f:
     var_a = pickle.load(f)
 region = pickle.loads(var_a)
 

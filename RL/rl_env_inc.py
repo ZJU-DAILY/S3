@@ -1,10 +1,8 @@
 import numpy as np
-import data_utils as F
-import copy
+from RL import data_utils as F
 # import heapq
 # from heapq import heappush, heappop, _siftdown, _siftup
 from sortedcontainers import SortedList
-import matplotlib.pyplot as plt
 import math
 
 
@@ -52,7 +50,7 @@ class TrajComp():
         self.err_seg = {}
         self.err_record = {}
         steps = len(self.ori_traj_set[episode])
-        # print("RL: \n", self.ori_traj_set[episode])
+        # print("RLOnline: \n", self.ori_traj_set[episode])
         self.F_ward = {}  # save (state_value, next_point)
         self.B_ward = {}  # save (state_value, last_point)
         self.F_ward[0] = [0.0, 1]

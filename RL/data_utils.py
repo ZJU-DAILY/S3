@@ -24,19 +24,22 @@ def points2meter(points):
 
 def to_traj(file, region):
     trajs = []
+    trjids = []
     f = open(file)
     for line in f:
         temp = line.strip().split(' ')
         time = 0
         traj = []
+
         for p in temp:
             x, y = cell2gps(region, int(p))
             traj.append([float(x), float(y), int(time)])
             time += 5
         trajs.append(traj)
+        trjids.append(temp)
 
     f.close()
-    return trajs
+    return trajs, trjids
 
 
 def sed_op(segment):
@@ -260,11 +263,11 @@ def draw_error(ori_traj, sim_traj, label):
 
 def any_op(X, metric):
     if metric == 'sed':
-        sed_op(X)
+        return sed_op(X)
     elif metric == 'ped':
-        ped_op(X)
+        return ped_op(X)
     elif metric == 'dad':
-        dad_op(X)
+        return dad_op(X)
 
 def draw(ori_traj, sim_traj, label='sed'):
     error, error_points, error_left, error_right, error_syn = draw_error(ori_traj, sim_traj, label)

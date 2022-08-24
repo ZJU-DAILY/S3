@@ -9,15 +9,15 @@ from sortedcontainers import SortedList
 
 
 class TrajComp():
-    def __init__(self, path, amount, region, a_size, s_size, metric):
+    def __init__(self, path, amount, region, a_size, s_size, metric='sed'):
         self.n_actions = a_size
         self.n_features = s_size
-        self._load(path, amount)
+        self._load(path, region)
         self.region = region
         self.metric = metric
 
     def _load(self, path, region):
-        self.ori_traj_set = F.to_traj(path, region)
+        self.ori_traj_set, self.ori_trajID_set = F.to_traj(path, region)
 
     def read(self, p, episode, rem, flag):
         self.F_ward[self.link_tail] = [0.0, p]

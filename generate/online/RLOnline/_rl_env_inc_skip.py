@@ -1,11 +1,9 @@
 import numpy as np
-import data_utils as F
-import copy
+from generate.online.RLOnline import data_utils as F
 import heapq
-from heapq import heappush, heappop, _siftdown, _siftup
-import matplotlib.pyplot as plt
+from heapq import _siftdown, _siftup
 import math
-import pickle
+
 
 class TrajComp():
     def __init__(self, path, amount, a_size, s_size):
