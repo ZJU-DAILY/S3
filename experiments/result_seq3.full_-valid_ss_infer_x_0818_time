@@ -318,3 +318,288 @@ RL	|	推理用时:	3.502432629466057 |	ss:	0.10032725579647304
 bellman	|	推理用时:	158.16456976160407 |	ss:	nan
 span_search	|	推理用时:	158.16456976160407 |	ss:	0.0987137543652608
 
+压缩率: 0.1 
+------------------------
+Tea 0.14859379455447197 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.3084092643111944 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.46701188385486603 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.6255817171186209 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.7840073369443417 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea	|	推理用时:	0.8006375264376402	|	ss:	0.09426512215055721
+TDTR	|	推理用时:	0	|	ss:	nan
+Error Search	|	推理用时:	0	|	ss:	nan
+Bottom up	|	推理用时:	0 |	ss:	nan
+RL	|	推理用时:	0 |	ss:	nan
+bellman	|	推理用时:	0 |	ss:	nan
+span_search	|	推理用时:	0 |	ss:	nan
+
+压缩率: 0.2 
+------------------------
+Tea 0.14296962320804596 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.3013874012976885 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.46133242547512054 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.62125682272017 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.7798796258866787 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea	|	推理用时:	0.7958139609545469	|	ss:	0.09426343849223613
+TDTR	|	推理用时:	0	|	ss:	nan
+Error Search	|	推理用时:	0	|	ss:	nan
+Bottom up	|	推理用时:	0 |	ss:	nan
+RL	|	推理用时:	0 |	ss:	nan
+bellman	|	推理用时:	0 |	ss:	nan
+span_search	|	推理用时:	0 |	ss:	nan
+
+压缩率: 0.3 
+------------------------
+Tea 0.1801446620374918 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.37487349659204483 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.5659426711499691 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.7606454640626907 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.9552096370607615 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea	|	推理用时:	0.9735294431447983	|	ss:	0.09665220283316776
+TDTR	|	推理用时:	0	|	ss:	nan
+Error Search	|	推理用时:	0	|	ss:	nan
+Bottom up	|	推理用时:	0 |	ss:	nan
+RL	|	推理用时:	0 |	ss:	nan
+bellman	|	推理用时:	0 |	ss:	nan
+span_search	|	推理用时:	0 |	ss:	nan
+
+压缩率: 0.4 
+------------------------
+Tea 0.22769124060869217 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.48477195017039776 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.7915453482419252 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 1.1151284761726856 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 1.380280937999487 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea	|	推理用时:	1.4058791194111109	|	ss:	0.09858245407045459
+TDTR	|	推理用时:	0	|	ss:	nan
+Error Search	|	推理用时:	0	|	ss:	nan
+Bottom up	|	推理用时:	0 |	ss:	nan
+RL	|	推理用时:	0 |	ss:	nan
+bellman	|	推理用时:	0 |	ss:	nan
+span_search	|	推理用时:	0 |	ss:	nan
+
+压缩率: 0.1 
+------------------------
+Tea 0.14125347137451172 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.29708797484636307 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.45578782446682453 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.6133954133838415 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.7683462426066399 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea	|	推理用时:	0.7838137783110142	|	ss:	nan
+TDTR	|	推理用时:	0	|	ss:	nan
+Error Search	|	推理用时:	0	|	ss:	nan
+Bottom up	|	推理用时:	0 |	ss:	nan
+RL	|	推理用时:	0 |	ss:	nan
+bellman	|	推理用时:	0 |	ss:	nan
+span_search	|	推理用时:	0 |	ss:	nan
+
+压缩率: 0.2 
+------------------------
+Tea 0.14191864430904388 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.29715937189757824 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.452537689357996 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.6098158620297909 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.7656924407929182 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea	|	推理用时:	0.7812307253479958	|	ss:	nan
+TDTR	|	推理用时:	0	|	ss:	nan
+Error Search	|	推理用时:	0	|	ss:	nan
+Bottom up	|	推理用时:	0 |	ss:	nan
+RL	|	推理用时:	0 |	ss:	nan
+bellman	|	推理用时:	0 |	ss:	nan
+span_search	|	推理用时:	0 |	ss:	nan
+
+压缩率: 0.3 
+------------------------
+Tea 0.2064463011920452 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.44413756392896175 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.6763410903513432 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.9141486510634422 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 1.150978945195675 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea	|	推理用时:	1.1732582952827215	|	ss:	nan
+TDTR	|	推理用时:	0	|	ss:	nan
+Error Search	|	推理用时:	0	|	ss:	nan
+Bottom up	|	推理用时:	0 |	ss:	nan
+RL	|	推理用时:	0 |	ss:	nan
+bellman	|	推理用时:	0 |	ss:	nan
+span_search	|	推理用时:	0 |	ss:	nan
+
+压缩率: 0.4 
+------------------------
+Tea 0.27650767751038074 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.5904932208359241 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.903318976983428 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 1.2195152640342712 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 1.5378260873258114 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea	|	推理用时:	1.568561127409339	|	ss:	nan
+TDTR	|	推理用时:	0	|	ss:	nan
+Error Search	|	推理用时:	0	|	ss:	nan
+Bottom up	|	推理用时:	0 |	ss:	nan
+RL	|	推理用时:	0 |	ss:	nan
+bellman	|	推理用时:	0 |	ss:	nan
+span_search	|	推理用时:	0 |	ss:	nan
+
+压缩率: 0.5 
+------------------------
+Tea 0.3496431950479746 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.7449501976370811 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 1.141465401276946 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 1.5406614299863577 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 1.9435594528913498 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea	|	推理用时:	1.983028283342719	|	ss:	nan
+TDTR	|	推理用时:	0	|	ss:	nan
+Error Search	|	推理用时:	0	|	ss:	nan
+Bottom up	|	推理用时:	0 |	ss:	nan
+RL	|	推理用时:	0 |	ss:	nan
+bellman	|	推理用时:	0 |	ss:	nan
+span_search	|	推理用时:	0 |	ss:	nan
+
+压缩率: 0.1 
+------------------------
+Tea 0.1339289378374815 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.2769391108304262 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.4164326172322035 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.5554087795317173 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.6923547144979239 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea	|	推理用时:	0.7059709057211876	|	ss:	1.1542530949509744
+TDTR	|	推理用时:	0	|	ss:	nan
+Error Search	|	推理用时:	0	|	ss:	nan
+Bottom up	|	推理用时:	0 |	ss:	nan
+RL	|	推理用时:	0 |	ss:	nan
+bellman	|	推理用时:	0 |	ss:	nan
+span_search	|	推理用时:	0 |	ss:	nan
+
+压缩率: 0.2 
+------------------------
+Tea 0.12309087812900543 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.2606878634542227 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.39795309863984585 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.5322830677032471 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.6638877894729376 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea	|	推理用时:	0.6770826559513807	|	ss:	1.1543302376986717
+TDTR	|	推理用时:	0	|	ss:	nan
+Error Search	|	推理用时:	0	|	ss:	nan
+Bottom up	|	推理用时:	0 |	ss:	nan
+RL	|	推理用时:	0 |	ss:	nan
+bellman	|	推理用时:	0 |	ss:	nan
+span_search	|	推理用时:	0 |	ss:	nan
+
+压缩率: 0.3 
+------------------------
+Tea 0.17862637527287006 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.381579864770174 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.5793336350470781 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.791965750977397 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 1.0093531981110573 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea	|	推理用时:	1.0281978454440832	|	ss:	1.1626557808064908
+TDTR	|	推理用时:	0	|	ss:	nan
+Error Search	|	推理用时:	0	|	ss:	nan
+Bottom up	|	推理用时:	0 |	ss:	nan
+RL	|	推理用时:	0 |	ss:	nan
+bellman	|	推理用时:	0 |	ss:	nan
+span_search	|	推理用时:	0 |	ss:	nan
+
+压缩率: 0.4 
+------------------------
+Tea 0.23485935851931572 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.5044551938772202 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.7813602145761251 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 1.0483383014798164 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 1.3474912643432617 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea	|	推理用时:	1.373854387551546	|	ss:	1.170022904629265
+TDTR	|	推理用时:	0	|	ss:	nan
+Error Search	|	推理用时:	0	|	ss:	nan
+Bottom up	|	推理用时:	0 |	ss:	nan
+RL	|	推理用时:	0 |	ss:	nan
+bellman	|	推理用时:	0 |	ss:	nan
+span_search	|	推理用时:	0 |	ss:	nan
+
+压缩率: 0.5 
+------------------------
+Tea 0.30601648427546024 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.6570764277130365 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 1.0161799304187298 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 1.3886133134365082 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 1.7822386007755995 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea	|	推理用时:	1.8164761140942574	|	ss:	1.1754313309033582
+TDTR	|	推理用时:	0	|	ss:	nan
+Error Search	|	推理用时:	0	|	ss:	nan
+Bottom up	|	推理用时:	0 |	ss:	nan
+RL	|	推理用时:	0 |	ss:	nan
+bellman	|	推理用时:	0 |	ss:	nan
+span_search	|	推理用时:	0 |	ss:	nan
+
+压缩率: 0.1 
+------------------------
+Tea 0.08156276494264603 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.1653235498815775 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.2439855858683586 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.3351967763155699 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.4232457708567381 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea	|	推理用时:	0.43277045153081417	|	ss:	0.09426732712597773
+TDTR	|	推理用时:	0	|	ss:	nan
+Error Search	|	推理用时:	0	|	ss:	nan
+Bottom up	|	推理用时:	0 |	ss:	nan
+RL	|	推理用时:	0 |	ss:	nan
+bellman	|	推理用时:	0 |	ss:	nan
+span_search	|	推理用时:	0 |	ss:	nan
+
+压缩率: 0.2 
+------------------------
+Tea 0.08360959403216839 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.18175357021391392 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.27044828049838543 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.36015672609210014 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.4510198347270489 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea	|	推理用时:	0.4588075987994671	|	ss:	0.09426345914734173
+TDTR	|	推理用时:	0	|	ss:	nan
+Error Search	|	推理用时:	0	|	ss:	nan
+Bottom up	|	推理用时:	0 |	ss:	nan
+RL	|	推理用时:	0 |	ss:	nan
+bellman	|	推理用时:	0 |	ss:	nan
+span_search	|	推理用时:	0 |	ss:	nan
+
+压缩率: 0.3 
+------------------------
+Tea 0.10582049936056137 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.24170037545263767 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.3612352944910526 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.489150520414114 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.6223872657865286 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea	|	推理用时:	0.6336114089936018	|	ss:	0.09668092839765494
+TDTR	|	推理用时:	0	|	ss:	nan
+Error Search	|	推理用时:	0	|	ss:	nan
+Bottom up	|	推理用时:	0 |	ss:	nan
+RL	|	推理用时:	0 |	ss:	nan
+bellman	|	推理用时:	0 |	ss:	nan
+span_search	|	推理用时:	0 |	ss:	nan
+
+压缩率: 0.4 
+------------------------
+Tea 0.15541247837245464 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.327656676992774 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.4947317335754633 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.677408741787076 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.843209458515048 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea	|	推理用时:	0.8581434823572636	|	ss:	0.09858364071073278
+TDTR	|	推理用时:	0	|	ss:	nan
+Error Search	|	推理用时:	0	|	ss:	nan
+Bottom up	|	推理用时:	0 |	ss:	nan
+RL	|	推理用时:	0 |	ss:	nan
+bellman	|	推理用时:	0 |	ss:	nan
+span_search	|	推理用时:	0 |	ss:	nan
+
+压缩率: 0.5 
+------------------------
+Tea 0.18736464902758598 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.3938107416033745 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.6170284580439329 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 0.8410555813461542 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea 1.0819545462727547 tdtr 0 errSea 0 btup 0 rl 0 bell 0
+Tea	|	推理用时:	1.109343582764268	|	ss:	0.0998730259170737
+TDTR	|	推理用时:	0	|	ss:	nan
+Error Search	|	推理用时:	0	|	ss:	nan
+Bottom up	|	推理用时:	0 |	ss:	nan
+RL	|	推理用时:	0 |	ss:	nan
+bellman	|	推理用时:	0 |	ss:	nan
+span_search	|	推理用时:	0 |	ss:	nan
+

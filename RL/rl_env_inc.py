@@ -15,7 +15,7 @@ class TrajComp():
         self.metric = metric
 
     def _load(self, path, amount, region):
-        self.ori_traj_set = F.to_traj(path, region)
+        self.ori_traj_set,_ = F.to_traj(path, region)
         # self.ori_traj_set.append())
         # for num in range(amount):
 

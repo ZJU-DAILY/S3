@@ -157,7 +157,7 @@ def compress_squish_e(src, points, max_ratio, metric):
     for idseq, seq in zip(src, points):
         tic1 = time.time()
         try:
-            _, idx, maxErr = squish_e(seq, int(max_ratio * len(seq)), mode='ped')
+            _, idx, maxErr = squish_e(seq, int(max_ratio * len(seq)), mode=metric)
         except Exception as e:
             continue
         tic2 = time.time()
@@ -175,7 +175,7 @@ def compress_squish_e(src, points, max_ratio, metric):
                 continue
         err.append(maxErr_)
 
-    print(f"squish_e压缩率 {max_ratio},耗时 {0}, error {np.mean(err)}")
+    print(f"squish_e压缩率 {max_ratio},耗时 {np.mean(timelist)}, error {np.mean(err)}")
     return compRes
 
 
@@ -239,13 +239,16 @@ class RLAgent:
         if idx[-1] == steps:
             idx, max_err = self.env.output(episode, 'V')
         tm = (tic2 - tic1) / len(self.env.ori_traj_set[episode])
-        return None, idx, max_err
+        return None, idx, max_err, tm
 
     def run_all(self, size, ratio, metric):
         err = []
+        timelist = []
         for i in range(size):
             buffer_size = int(ratio * len(self.env.ori_traj_set[i]))
-            _, idx, max_err = self.RL_online(buffer_size, i)
+            _, idx, max_err, tm = self.RL_online(buffer_size, i)
+            timelist.append(tm)
+
             if metric == 'ss':
                 try:
                     max_err = ceder.CED_op(idx, self.env.ori_trajID_set[i])
@@ -253,17 +256,17 @@ class RLAgent:
                     print("exception")
                     continue
             err.append(max_err)
-        print(f"rlts压缩率 {ratio}, error {np.mean(err)}")
+        print(f"rlts压缩率 {ratio}, 耗时 {np.mean(timelist)}, error {np.mean(err)}")
 
 
 if __name__ == '__main__':
-    datasets = "infer"
+    datasets = "len250"
     src_file = os.path.join(DATA_DIR, datasets + ".src")
     with open(os.path.join(DATA_DIR, 'pickle.txt'), 'rb') as f:
         var_a = pickle.load(f)
     region = pickle.loads(var_a)
     points, src = readData(src_file, region)
-    metric = 'ss'
+    metric = 'dad'
     agent = RLAgent(datasets, region, len(points), metric)
     ceder = CEDer()
 
