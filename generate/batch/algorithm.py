@@ -1,9 +1,28 @@
-
-
+from sys_config import DATA_DIR
 # adaptive douglas-peucker
 import functools
-
+import os
 from generate.utils import *
+
+
+def readData(src_file, region):
+    with open(src_file, "r") as f:
+        ss = f.readlines()
+    points = []
+    src = []
+    for s in ss:
+        s = s.strip("\n")
+        s = s.split(" ")
+        point = []
+        src_ = []
+        for p in s:
+            if p == " " or p == "UNK":
+                continue
+            point.append(cell2gps(region, int(p)))
+            src_.append(p)
+        points.append(point)
+        src.append(src_)
+    return points, src
 
 
 def adp(points, max_len, mode):
@@ -35,11 +54,12 @@ def adp(points, max_len, mode):
     return pp, res, maxErr
 
 
-
 # todo 查找相关bug，err递增很诡异
 def btup(points, max_len, mode):
-    def cal_len(segs):
-        pass
+    # def cal_len(segs):
+    #     res = set()
+    #     for i in segs:
+
     segs = []
     for i in range(0, len(points) - 1, 2):
         st = i
@@ -50,7 +70,7 @@ def btup(points, max_len, mode):
     # for i in range(len(segs) - 1):
     #     merge_cost.append(calculate_error(points,segs[i],segs[i+1],mode))
     #
-    while len(segs) + 1 > (max_len // 2) :
+    while len(segs) + 1 > (max_len):
         merge_cost = []
         min_cost = float('inf')
         min_idx = -1
@@ -79,10 +99,13 @@ def btup(points, max_len, mode):
         if i == len(segs) - 1:
             idx.append(segs[i][1])
             pp.append(points[idx[-1]])
+    if len(points) - 1 not in idx:
+        if len(idx) == max_len:
+            idx[-1] = len(points) - 1
+        else:
+            idx.append(len(points) - 1)
     min_cost = max_err
     return pp, idx, min_cost
-
-
 
 
 def bellman(points, max_len, mode):
@@ -146,3 +169,15 @@ def error_search_algorithm(points, max_len, mode):
         cur_err = max_err
         gap -= 1
     return optim_comp, cur_err
+
+
+if __name__ == '__main__':
+    src_file = "../../datasets/casestudy/src.txt"
+    with open(os.path.join(DATA_DIR, 'pickle.txt'), 'rb') as f:
+        var_a = pickle.load(f)
+    region = pickle.loads(var_a)
+    points, src = readData(src_file, region)
+    _, idx, _ = adp(points[0], 9, "ped")
+    res = [str(src[0][i]) for i in idx]
+    ss = " ".join(res)
+    print(ss)

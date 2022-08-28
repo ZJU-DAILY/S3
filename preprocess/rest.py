@@ -1,13 +1,13 @@
 import datetime
 
-from models.seq3_losses import sed_loss
+# from models.seq3_losses import sed_loss
 from preprocess.SpatialRegionTools import cell2gps, cell2coord, coord2cell, lonlat2meters
 from preprocess.SpatialRegionTools import str2trip
 # from SpatialRegionTools import getRegionInstance
 import numpy as np
 from sklearn.neighbors import KDTree
 import matplotlib as mpl
-from modules.helpers import getDistance, getCompress
+# from modules.helpers import getDistance, getCompress
 import os
 
 mpl.use('Agg')
@@ -86,10 +86,13 @@ with open('../datasets/gid2poi.txt', 'rb') as f:
     var_a = pickle.load(f)
 gl_gid2poi = pickle.loads(var_a)
 
-# case(region, gl_gid2poi, '../datasets/eval.src', 'gps.txt')
+case(region, gl_gid2poi, '../datasets/casestudy/src.txt', 'src.txt')
+case(region, gl_gid2poi, '../datasets/casestudy/ced.txt', 'ced.txt')
+case(region, gl_gid2poi, '../datasets/casestudy/sed.txt', 'sed.txt')
+case(region, gl_gid2poi, '../datasets/casestudy/ped.txt', 'ped.txt')
 # case(region, gl_gid2poi, '../evaluation/seq3.full_-valid_preds.txt', 'gps_comp.txt')
 # plotTest(region,'train')
 # plotTest(region,'val')
 # plotTest(region,'eval')
 
-rl_data("/home/hch/RLTS/TrajData/compare",region,"../datasets/eval.src")
+# rl_data("/home/hch/RLTS/TrajData/compare",region,"../datasets/eval.src")

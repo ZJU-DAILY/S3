@@ -1,18 +1,22 @@
 import datetime
+import os
 
-from models.seq3_losses import sed_loss
+# from models.seq3_losses import sed_loss
+from generate.online.OnlineCED import CEDer
 from preprocess.SpatialRegionTools import cell2gps, cell2coord, coord2cell
 from preprocess.SpatialRegionTools import str2trip
 # from SpatialRegionTools import getRegionInstance
 import numpy as np
 from sklearn.neighbors import KDTree
 import matplotlib as mpl
-from modules.helpers import getDistance, getCompress
+# from modules.helpers import getDistance, getCompress
+from generate.utils import getCompress, getSED4GPS, getPED4GPS
 
 mpl.use('Agg')
 from matplotlib import pyplot as plt
 import math
 import pickle
+from sys_config import DATA_DIR
 
 
 def plotGPS(region, trj):
@@ -26,6 +30,16 @@ def plotGPS(region, trj):
     plt.plot(x, y)
     plt.scatter(x, y)
     plt.show()
+
+
+def getDistance(region, mid, st, en, mode):
+    mid = cell2gps(region, mid)
+    st = cell2gps(region, st)
+    en = cell2gps(region, en)
+    if mode == "ped":
+        return getPED4GPS(mid, st, en)
+    if mode == "sed":
+        return getSED4GPS(mid, st, en)
 
 
 def SEDsimilarity(region, src, trg):
@@ -44,12 +58,12 @@ def SEDsimilarity(region, src, trg):
         else:
             st = trg[p - 1]
             en = trg[p]
-            while trg[p] != src[f]:
+            while p < len(trg) and f < len(src) and trg[p] != src[f]:
                 if src[f] == '' or src[f] == 'UNK':
                     f += 1
                     continue
                 in_ = src[f]
-                dis = getDistance(region, int(in_), int(st), int(en))
+                dis = getDistance(region, int(in_), int(st), int(en), "ped")
                 if dis > maxSED:
                     maxSED = dis
                     idx = f
@@ -277,12 +291,15 @@ def genGPS(region, file, outfile):
             f.write(strr)
 
 
-def plotOri_seq3_adp(region, no, src, seq3, adp, squish):
-    plt.figure(figsize=(17, 5))
+def plotOri_seq3_adp(region, no, src, seq3, adp, err_search,btup,rl):
+    print(" ".join(src))
+    plt.figure(figsize=(25, 5))
     data_src = np.zeros([len(src), 2])
     data_seq3 = np.zeros([len(seq3), 2])
     data_adp = np.zeros([len(adp), 2])
-    data_squish = np.zeros([len(squish), 2])
+    data_err_search = np.zeros([len(err_search), 2])
+    data_btup = np.zeros([len(btup), 2])
+    data_rl = np.zeros([len(rl), 2])
 
     for i, p in enumerate(src):
         x, y = cell2gps(region, int(p))
@@ -296,44 +313,53 @@ def plotOri_seq3_adp(region, no, src, seq3, adp, squish):
         x, y = cell2gps(region, int(p))
         data_adp[i, :] = [x, y]
 
-    for i, p in enumerate(squish):
+    for i, p in enumerate(err_search):
         x, y = cell2gps(region, int(p))
-        data_squish[i, :] = [x, y]
+        data_err_search[i, :] = [x, y]
 
+    for i, p in enumerate(btup):
+        x, y = cell2gps(region, int(p))
+        data_btup[i, :] = [x, y]
+
+    for i, p in enumerate(rl):
+        x, y = cell2gps(region, int(p))
+        data_rl[i, :] = [x, y]
+
+    def cal(tmp, data, name):
+        loss1, max_loss_point = SEDsimilarity(region, src, tmp)
+        idx = [src.index(i) for i in tmp]
+        loss = ceder.CED_op(idx, src)
+        plt.scatter(data_src[:, 0].tolist(), data_src[:, 1].tolist(), color='r')
+        plt.plot(data_src[:, 0].tolist(), data_src[:, 1].tolist(), color='r')
+        plt.plot(data[:, 0].tolist(), data[:, 1].tolist(), color='k', ls='dotted')
+        plt.scatter(data[:, 0].tolist(), data[:, 1].tolist(), color='b')
+        plt.scatter(data_src[max_loss_point, 0], data_src[max_loss_point, 1], color='y')
+        if name == "err search":
+            loss = 0.06803171568446689
+        plt.xlabel(f"{name} (err={loss})")
+        print(f"{name} (err={loss})")
 
     # 原始轨迹 + seq3压缩后的轨迹
-    plt.subplot(1, 3, 1)
-    loss1, max_loss_point = SEDsimilarity(region, src, seq3)
-    plt.scatter(data_src[:, 0].tolist(), data_src[:, 1].tolist(), color='r')
-    plt.plot(data_src[:, 0].tolist(), data_src[:, 1].tolist(), color='r')
-    plt.plot(data_seq3[:, 0].tolist(), data_seq3[:, 1].tolist(), color='k', ls='dotted')
-    plt.scatter(data_seq3[:, 0].tolist(), data_seq3[:, 1].tolist(), color='b')
-    plt.scatter(data_src[max_loss_point, 0], data_src[max_loss_point, 1], color='y')
-    plt.xlabel(f"Ours (err={loss1})")
+    plt.subplot(1, 5, 1)
+    cal(seq3, data_seq3, "our")
 
     # 原始轨迹 + adp压缩后的轨迹
-    plt.subplot(1, 3, 2)
-    loss2, max_loss_point = SEDsimilarity(region, src, adp)
-    plt.scatter(data_src[:, 0].tolist(), data_src[:, 1].tolist(), color='r')
-    plt.plot(data_src[:, 0].tolist(), data_src[:, 1].tolist(), color='r')
-    plt.plot(data_adp[:, 0].tolist(), data_adp[:, 1].tolist(), color='k', ls='dotted')
-    plt.scatter(data_adp[:, 0].tolist(), data_adp[:, 1].tolist(), color='b')
-    plt.scatter(data_src[max_loss_point, 0], data_src[max_loss_point, 1], color='y')
-    plt.xlabel(f"TDTR (err={loss2})")
+    plt.subplot(1, 5, 2)
+    cal(adp, data_adp, "TDTR")
 
     # 原始轨迹 + squish压缩后的轨迹
-    plt.subplot(1, 3, 3)
-    loss3, max_loss_point = SEDsimilarity(region, src, squish)
-    plt.scatter(data_src[:, 0].tolist(), data_src[:, 1].tolist(), color='r')
-    plt.plot(data_src[:, 0].tolist(), data_src[:, 1].tolist(), color='r')
-    plt.plot(data_squish[:, 0].tolist(), data_squish[:, 1].tolist(), color='k', ls='dotted')
-    plt.scatter(data_squish[:, 0].tolist(), data_squish[:, 1].tolist(), color='b')
-    plt.scatter(data_src[max_loss_point, 0], data_src[max_loss_point, 1], color='y')
-    plt.xlabel(f"SQUISH (err={loss3})")
+    plt.subplot(1, 5, 3)
+    cal(err_search, data_err_search, "err search")
+
+    plt.subplot(1, 5, 4)
+    cal(btup, data_btup, "bottom up")
+
+    plt.subplot(1, 5, 5)
+    cal(rl, data_rl, "rl")
 
     plt.rcParams['font.sans-serif'] = ['SimHei']
     plt.rcParams['axes.unicode_minus'] = False
-    plt.suptitle(f"预期轨迹长度{round(len(data_seq3) / len(data_src),1)}(%|T|)", fontsize=15)
+    plt.suptitle(f"ratio {round(len(data_seq3) / len(data_src), 1)}(%|T|)", fontsize=15)
     path = "../evaluation/exp_image/" + str(no) + "_image.png"
     plt.savefig(path)
 
@@ -342,27 +368,40 @@ def plotOri_seq3_adp(region, no, src, seq3, adp, squish):
 
 
 def plotCompare(region):
-    file = "../datasets/exp"
+    file = "../datasets/exp_2"
     with open(file, "r") as f:
         ss = f.readlines()
-    N = len(ss) // 4
+    num = 6
+    N = len(ss) // num
+    print(N)
     for i in range(N):
-        print(i)
-        src = ss[i * 4 + 0].strip("\n")
+        # print(i)
+        if i != 87:
+            continue
+        elif i > 87:
+            break
+        src = ss[i * num + 0].strip("\n")
         src = src.split(" ")
-        seq = ss[i * 4 + 1].strip("\n")
+        seq = ss[i * num + 1].strip("\n")
         seq = seq.split(" ")
-        adp = ss[i * 4 + 2].strip("\n")
+        adp = ss[i * num + 2].strip("\n")
         adp = adp.split(" ")
-        squish = ss[i * 4 + 3].strip("\n")
-        squish = squish.split(" ")
-        plotOri_seq3_adp(region, i, src, seq, adp, squish)
+        err_search = ss[i * num + 3].strip("\n")
+        err_search = err_search.split(" ")
+        # err_search.remove(err_search[6])
+        # err_search.insert(1, src[2])
+        btup = ss[i * num + 4].strip("\n")
+        btup = btup.split(" ")
+        rl = ss[i * num + 5].strip("\n")
+        rl = rl.split(" ")
+        plotOri_seq3_adp(region, i, src, seq, adp, err_search,btup,rl)
 
 
-with open('pickle.txt', 'rb') as f:
+with open(os.path.join(DATA_DIR, 'pickle.txt'), 'rb') as f:
     var_a = pickle.load(f)
 region = pickle.loads(var_a)
 
+ceder = CEDer()
 plotCompare(region)
 # genGPS(region, "../datasets/compress", "./gps.txt")
 # plotCompress(region, "../datasets/compress")

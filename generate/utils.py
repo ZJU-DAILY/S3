@@ -285,7 +285,7 @@ def compress_seq3(path, checkpoint, src_file, out_file,
                  src_lengths, trg_lengths) = batch
 
                 max_ratio = 0.2
-                trg_lengths = torch.clamp(src_lengths * max_ratio, min=9, max=30) + 1
+                trg_lengths = torch.clamp(src_lengths * max_ratio, min=9, max=25)
                 trg_lengths = torch.floor(trg_lengths)
 
                 #############################################################
