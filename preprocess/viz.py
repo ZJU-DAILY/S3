@@ -291,9 +291,9 @@ def genGPS(region, file, outfile):
             f.write(strr)
 
 
-def plotOri_seq3_adp(region, no, src, seq3, adp, err_search,btup,rl):
+def plotOri_seq3_adp(region, no, src, seq3, adp, err_search, btup, rl):
     print(" ".join(src))
-    plt.figure(figsize=(25, 5))
+    plt.figure(figsize=(28, 5))
     data_src = np.zeros([len(src), 2])
     data_seq3 = np.zeros([len(seq3), 2])
     data_adp = np.zeros([len(adp), 2])
@@ -334,32 +334,32 @@ def plotOri_seq3_adp(region, no, src, seq3, adp, err_search,btup,rl):
         plt.plot(data[:, 0].tolist(), data[:, 1].tolist(), color='k', ls='dotted')
         plt.scatter(data[:, 0].tolist(), data[:, 1].tolist(), color='b')
         plt.scatter(data_src[max_loss_point, 0], data_src[max_loss_point, 1], color='y')
-        if name == "err search":
-            loss = 0.06803171568446689
-        plt.xlabel(f"{name} (err={loss})")
-        print(f"{name} (err={loss})")
+        # if name == "Error-Search":
+        #     loss = 0.06803171568446689
+        plt.xlabel(f"{name} (ced={loss})", fontsize=14)
+        print(f"{name} (ced={loss})")
 
     # 原始轨迹 + seq3压缩后的轨迹
     plt.subplot(1, 5, 1)
-    cal(seq3, data_seq3, "our")
+    cal(seq3, data_seq3, "S3")
 
     # 原始轨迹 + adp压缩后的轨迹
     plt.subplot(1, 5, 2)
-    cal(adp, data_adp, "TDTR")
+    cal(adp, data_adp, "Top-Down")
 
     # 原始轨迹 + squish压缩后的轨迹
     plt.subplot(1, 5, 3)
-    cal(err_search, data_err_search, "err search")
+    cal(err_search, data_err_search, "Error-Search")
 
     plt.subplot(1, 5, 4)
-    cal(btup, data_btup, "bottom up")
+    cal(btup, data_btup, "Bottom-Up")
 
     plt.subplot(1, 5, 5)
-    cal(rl, data_rl, "rl")
+    cal(rl, data_rl, "RLTS")
 
     plt.rcParams['font.sans-serif'] = ['SimHei']
     plt.rcParams['axes.unicode_minus'] = False
-    plt.suptitle(f"ratio {round(len(data_seq3) / len(data_src), 1)}(%|T|)", fontsize=15)
+    plt.suptitle(f"Ratio={round(len(data_seq3) / len(data_src), 1)}", fontsize=20)
     path = "../evaluation/exp_image/" + str(no) + "_image.png"
     plt.savefig(path)
 
@@ -394,7 +394,7 @@ def plotCompare(region):
         btup = btup.split(" ")
         rl = ss[i * num + 5].strip("\n")
         rl = rl.split(" ")
-        plotOri_seq3_adp(region, i, src, seq, adp, err_search,btup,rl)
+        plotOri_seq3_adp(region, i, src, seq, adp, err_search, btup, rl)
 
 
 with open(os.path.join(DATA_DIR, 'pickle.txt'), 'rb') as f:

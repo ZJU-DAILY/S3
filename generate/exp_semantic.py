@@ -136,10 +136,10 @@ def load_model(path, checkpoint, src_file, device):
     #                                    )
     model.load_state_dict(checkpoint["model"])
 
-    # model.compressor.attention_used = False
-    # model.compressor.coverage = False
-    # model.decompressor.attention_used = False
-    # model.decompressor.coverage = False
+    model.compressor.attention_used = False
+    model.compressor.coverage = False
+    model.decompressor.attention_used = False
+    model.decompressor.coverage = False
 
     model.eval()
 
@@ -193,7 +193,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
              src_lengths, trg_lengths) = batch
 
             # trg_lengths = torch.clamp(src_lengths * max_ratio, min=5, max=25)
-            trg_lengths = torch.clamp(src_lengths * max_ratio, min=9, max=25)
+            trg_lengths = torch.clamp(src_lengths * max_ratio, min=5, max=125)
             trg_lengths = torch.floor(trg_lengths).int()
 
             m_zeros = torch.zeros(inp_src.size(0), vocab.size).to(inp_src)
@@ -412,11 +412,12 @@ if __name__ == '__main__':
 
     if metric == 'ped' or metric == 'dad':
         # checkpoint = "seq3.full_-ped-tdrive"
-        # checkpoint = "seq3.full_-sed-tdrive"
-        checkpoint = "seq3.full_-ped"
+        checkpoint = "seq3.full_-sed-tdrive"
+        # checkpoint = "seq3.full_-ped"
     elif metric == 'sed':
-        # checkpoint = "seq3.full_-sed-tdrive"
-        checkpoint = "seq3.full_-sed"
+        # checkpoint = "seq3.full_-ped-tdrive"
+        checkpoint = "seq3.full_-sed-tdrive"
+        # checkpoint = "seq3.full_-sed"
         # checkpoint = "seq3.full_-noAttn"
     elif metric == 'ss':
         # checkpoint = "seq3.full_-noAttn"
@@ -449,7 +450,7 @@ if __name__ == '__main__':
     # --------------------------------------------------------------------
     with open(f"../experiments/result_{checkpoint}_{metric}_{datasets}_x_0818_time", "a") as f:
         # 1-5对应90%-50%的压缩率
-        range_ = range(1, 6)
+        range_ = range(5, 6)
         for ratio in range_:
             print(f"压缩率: {ratio / 10} \n------------------------")
             head = f"压缩率: {ratio / 10} \n------------------------\n"

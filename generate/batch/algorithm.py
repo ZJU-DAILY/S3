@@ -70,7 +70,7 @@ def btup(points, max_len, mode):
     # for i in range(len(segs) - 1):
     #     merge_cost.append(calculate_error(points,segs[i],segs[i+1],mode))
     #
-    while len(segs) + 1 > (max_len):
+    while len(segs) + 1 > (max_len // 2):
         merge_cost = []
         min_cost = float('inf')
         min_idx = -1
@@ -172,12 +172,17 @@ def error_search_algorithm(points, max_len, mode):
 
 
 if __name__ == '__main__':
-    src_file = "../../datasets/casestudy/src.txt"
+    src_file = "../../datasets/geolife/infer.src"
     with open(os.path.join(DATA_DIR, 'pickle.txt'), 'rb') as f:
         var_a = pickle.load(f)
     region = pickle.loads(var_a)
     points, src = readData(src_file, region)
-    _, idx, _ = adp(points[0], 9, "ped")
-    res = [str(src[0][i]) for i in idx]
-    ss = " ".join(res)
-    print(ss)
+    ss = ""
+    mer = "ped"
+    for k in range(len(points)):
+        _, idx, _ = adp(points[k], 9, mer)
+        idx.sort()
+        res = [str(src[k][i]) for i in idx]
+        ss += " ".join(res) + "\n"
+    with open(f"../../datasets/casestudy/{mer}.txt", "w") as f:
+        f.write(ss)

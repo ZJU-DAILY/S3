@@ -260,7 +260,7 @@ class RLAgent:
 
 
 if __name__ == '__main__':
-    datasets = "len250"
+    datasets = "len250.src"
     src_file = os.path.join(DATA_DIR, datasets + ".src")
     with open(os.path.join(DATA_DIR, 'pickle.txt'), 'rb') as f:
         var_a = pickle.load(f)

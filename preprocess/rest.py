@@ -55,6 +55,7 @@ def case(region, gl_gid2poi, src_file, out_file):
                 poi = gl_gid2poi.get(p, -1)
                 res += str(lon) + " " + str(lat) + " " + str(poi) + '\n'
         res += '\n'
+
     with open(f"./{out_file}", "w") as f:
         f.write(res)
 
@@ -86,7 +87,7 @@ with open('../datasets/gid2poi.txt', 'rb') as f:
     var_a = pickle.load(f)
 gl_gid2poi = pickle.loads(var_a)
 
-case(region, gl_gid2poi, '../datasets/casestudy/src.txt', 'src.txt')
+case(region, gl_gid2poi, '../datasets/geolife/infer.src', 'src.txt')
 case(region, gl_gid2poi, '../datasets/casestudy/ced.txt', 'ced.txt')
 case(region, gl_gid2poi, '../datasets/casestudy/sed.txt', 'sed.txt')
 case(region, gl_gid2poi, '../datasets/casestudy/ped.txt', 'ped.txt')

@@ -3,7 +3,9 @@ import pickle
 import math
 from itertools import groupby
 
+import functools
 import torch
+import random
 from scipy.spatial import KDTree
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -16,6 +18,8 @@ from preprocess.SpatialRegionTools import cell2gps
 from utils.training import load_checkpoint
 import numpy as np
 from models.seq3_losses import r
+import os
+from sys_config import DATA_DIR
 
 def cleanTrj(src):
     res = []
@@ -24,6 +28,7 @@ def cleanTrj(src):
             continue
         res.append(p)
     return res
+
 
 def dad_op(segment):
     if len(segment) <= 2:
@@ -153,6 +158,7 @@ def calculate_error(points, seg1, seg2, mode):
             max_err = max(max_err, getSED4GPS((p, i), (st, seg1[0]), (en, seg2[-1])))
     return max_err
 
+
 def getKey_Value(item):
     for it in item.items():
         return it[0], it[1]
@@ -163,6 +169,8 @@ def cmp(a, b):
     (_, _), (_, maxErr_b) = getKey_Value(b)
     return maxErr_a - maxErr_b
 
+def err_cmp(a, b):
+    return a[1] - b[1]
 
 def swap(points, i, j):
     tmp = points[i]
@@ -177,6 +185,7 @@ def id2gps(region, trj):
         points.append([x, y])
     return points
 
+
 def get_out(R, st, en, res):
     if st + 1 >= en or R[st][en] == -1:
         return []
@@ -186,6 +195,7 @@ def get_out(R, st, en, res):
     res.extend(left)
     res.extend(right)
     res.append(sp)
+
 
 def adp_min_size(points, epi, st, en, mode):
     res = set()
@@ -223,6 +233,8 @@ def create_err_space(points, mode):
             mmp_list.append(err)
     mmp_list.sort()
     return mmp, mmp_id, mmp_list
+
+
 def devect(ids, oov, strip_eos, vocab, pp):
     return devectorize(ids.tolist(), vocab.id2tok, vocab.tok2id[vocab.EOS],
                        strip_eos=strip_eos, oov_map=oov, pp=pp)
@@ -238,7 +250,7 @@ def id2txt(ids, vocab, oov=None, lengths=None, strip_eos=True):
 
 def compress_seq3(path, checkpoint, src_file, out_file,
                   device, verbose=False, mode="attention"):
-    checkpoint = load_checkpoint(checkpoint,path)
+    checkpoint = load_checkpoint(checkpoint, path)
     config = checkpoint["config"]
     vocab = checkpoint["vocab"]
 
@@ -388,6 +400,7 @@ def devectorize(data, id2tok, eos, strip_eos=True, oov_map=None, pp=True):
     data = [[x if x != 'UNK' else '' for x in seq] for seq in data]
     return data
 
+
 def sed_loss(region, src, trg, mode):
     if len(src) == len(trg):
         print("the length of src is same with trg.")
@@ -500,4 +513,96 @@ def sematic_simp(model, src, comp, vocab):
     sim_2 = sim_2 / comp_len
     # print(sim,sim_2)
     return (sim + sim_2) / 2
+
+
+# Euclidean distance.
+def euc_dist(pt1, pt2):
+    return math.sqrt((pt2[0] - pt1[0]) * (pt2[0] - pt1[0]) + (pt2[1] - pt1[1]) * (pt2[1] - pt1[1]))
+
+
+def _c(ca, i, j, P, Q):
+    if ca[i, j] > -1:
+        return ca[i, j]
+    elif i == 0 and j == 0:
+        ca[i, j] = euc_dist(P[0], Q[0])
+    elif i > 0 and j == 0:
+        ca[i, j] = max(_c(ca, i - 1, 0, P, Q), euc_dist(P[i], Q[0]))
+    elif i == 0 and j > 0:
+        ca[i, j] = max(_c(ca, 0, j - 1, P, Q), euc_dist(P[0], Q[j]))
+    elif i > 0 and j > 0:
+        ca[i, j] = max(min(_c(ca, i - 1, j, P, Q), _c(ca, i - 1, j - 1, P, Q), _c(ca, i, j - 1, P, Q)),
+                       euc_dist(P[i], Q[j]))
+    else:
+        ca[i, j] = float("inf")
+    return ca[i, j]
+
+
+""" Computes the discrete frechet distance between two polygonal lines
+Algorithm: http://www.kr.tuwien.ac.at/staff/eiter/et-archive/cdtr9464.pdf
+P and Q are arrays of 2-element arrays (points)
+"""
+
+
+def frechetDist(P, Q):
+    ca = np.ones((len(P), len(Q)))
+    ca = np.multiply(ca, -1)
+    return _c(ca, len(P) - 1, len(Q) - 1, P, Q)
+
+
+def topk(chosen_trj, datasets, k):
+    res = []
+    for i, trj in enumerate(datasets):
+        err = frechetDist(chosen_trj, trj)
+        res.append([i, err])
+    res.sort(key=functools.cmp_to_key(err_cmp))
+    return res[:k]
+
+def cal_sim(datasets, k):
+    n = len(datasets)
+    j = random.randint(0, n - 1)
+    trj = datasets[j]
+    topkdata = topk(trj, datasets, k)
+    topkid = [it[0] for it in topkdata]
+    return set(topkid)
+
+
+def exp_topk(src, s3):
+    k = 150
+    src_set = cal_sim(src, k=k)
+    s3_set = cal_sim(s3, k=k)
+    xset = src_set & s3_set
+    return len(xset) / k
+
+
+if __name__ == '__main__':
+    with open(os.path.join(DATA_DIR, 'pickle.txt'), 'rb') as f:
+        var_a = pickle.load(f)
+    region = pickle.loads(var_a)
+    file = "../datasets/exp_2"
+    with open(file, "r") as f:
+        ss = f.readlines()
+    num = 6
+    N = len(ss) // num
+    print(N)
+    S3 = []
+    SRC = []
+    for i in range(N):
+        src_ = ss[i * num + 0].strip("\n")
+        src_ = src_.split(" ")
+        seq = ss[i * num + 1].strip("\n")
+        seq = seq.split(" ")
+        data_src = np.zeros([len(src_), 2])
+        data_seq3 = np.zeros([len(seq), 2])
+
+        for i, p in enumerate(src_):
+            x, y = cell2gps(region, int(p))
+            data_src[i, :] = [x, y]
+
+        for i, p in enumerate(seq):
+            x, y = cell2gps(region, int(p))
+            data_seq3[i, :] = [x, y]
+        S3.append(data_seq3)
+        SRC.append(data_src)
+    print(exp_topk(SRC, S3))
+
 
