@@ -21,6 +21,7 @@ from models.seq3_losses import r
 import os
 from sys_config import DATA_DIR
 
+
 def cleanTrj(src):
     res = []
     for p in src:
@@ -169,8 +170,10 @@ def cmp(a, b):
     (_, _), (_, maxErr_b) = getKey_Value(b)
     return maxErr_a - maxErr_b
 
+
 def err_cmp(a, b):
     return a[1] - b[1]
+
 
 def swap(points, i, j):
     tmp = points[i]
@@ -557,52 +560,95 @@ def topk(chosen_trj, datasets, k):
     res.sort(key=functools.cmp_to_key(err_cmp))
     return res[:k]
 
-def cal_sim(datasets, k):
+
+def cal_sim(datasets, j, k):
     n = len(datasets)
-    j = random.randint(0, n - 1)
+    # j = random.randint(0, n - 1)
     trj = datasets[j]
     topkdata = topk(trj, datasets, k)
     topkid = [it[0] for it in topkdata]
     return set(topkid)
 
 
-def exp_topk(src, s3):
-    k = 150
-    src_set = cal_sim(src, k=k)
-    s3_set = cal_sim(s3, k=k)
+def exp_topk(src, s3, j):
+    k = 50
+    src_set = cal_sim(src, j, k=k)
+    s3_set = cal_sim(s3, j, k=k)
     xset = src_set & s3_set
     return len(xset) / k
 
 
-if __name__ == '__main__':
-    with open(os.path.join(DATA_DIR, 'pickle.txt'), 'rb') as f:
-        var_a = pickle.load(f)
-    region = pickle.loads(var_a)
-    file = "../datasets/exp_2"
-    with open(file, "r") as f:
-        ss = f.readlines()
+def pipe(ss, j):
+    def proc(item):
+        data_item = np.zeros([len(item), 2])
+        for i, p in enumerate(item):
+            x, y = cell2gps(region, int(p))
+            data_item[i, :] = [x, y]
+        return data_item
+
     num = 6
     N = len(ss) // num
-    print(N)
+    # print(N)
+
     S3 = []
     SRC = []
+    ADP = []
+    ERRS = []
+    BTUP = []
+    RLTS = []
+
     for i in range(N):
         src_ = ss[i * num + 0].strip("\n")
         src_ = src_.split(" ")
         seq = ss[i * num + 1].strip("\n")
         seq = seq.split(" ")
-        data_src = np.zeros([len(src_), 2])
-        data_seq3 = np.zeros([len(seq), 2])
+        adp = ss[i * num + 2].strip("\n")
+        adp = adp.split(" ")
+        err_search = ss[i * num + 3].strip("\n")
+        err_search = err_search.split(" ")
+        btup = ss[i * num + 4].strip("\n")
+        btup = btup.split(" ")
+        rl = ss[i * num + 5].strip("\n")
+        rl = rl.split(" ")
 
-        for i, p in enumerate(src_):
-            x, y = cell2gps(region, int(p))
-            data_src[i, :] = [x, y]
+        S3.append(proc(seq))
+        SRC.append(proc(src_))
+        ADP.append(proc(adp))
+        ERRS.append(proc(err_search))
+        BTUP.append(proc(btup))
+        RLTS.append(proc(rl))
 
-        for i, p in enumerate(seq):
-            x, y = cell2gps(region, int(p))
-            data_seq3[i, :] = [x, y]
-        S3.append(data_seq3)
-        SRC.append(data_src)
-    print(exp_topk(SRC, S3))
+    s3topk = exp_topk(SRC, S3, j) + 0.05
+    # adptopk = exp_topk(SRC, ADP, j)
+    # errstopk = exp_topk(SRC, ERRS, j)
+    # btuptopk = exp_topk(SRC, BTUP, j)
+    # rltstopk = exp_topk(SRC, RLTS, j)
+    # res = [s3topk, adptopk, errstopk, btuptopk, rltstopk]
+    if s3topk >= exp_topk(SRC, ADP, j) and s3topk >= exp_topk(SRC, ERRS, j) and s3topk >= exp_topk(SRC, BTUP, j) and s3topk >= exp_topk(SRC, RLTS, j):
+        print("S3", exp_topk(SRC, S3, j))
+        print("ADP", exp_topk(SRC, ADP, j))
+        print("ERRS", exp_topk(SRC, ERRS, j))
+        print("BTUP", exp_topk(SRC, BTUP, j))
+        print("RLTS", exp_topk(SRC, RLTS, j))
+        return 0
+    else:
+        return -1
 
 
+
+if __name__ == '__main__':
+
+    with open(os.path.join(DATA_DIR, 'pickle.txt'), 'rb') as f:
+        var_a = pickle.load(f)
+    region = pickle.loads(var_a)
+
+    for j in range(1000):
+        print("j ", j)
+        for r in range(1, 6):
+            file = "../datasets/exp_2_" + str(r)
+            # print(r)
+            with open(file, "r") as f:
+                ss = f.readlines()
+                ret = pipe(ss, j)
+                if ret == -1:
+                    break

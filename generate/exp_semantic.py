@@ -7,6 +7,7 @@
 
 import os
 import sys
+import csv
 
 sys.path.append('/home/hch/Desktop/trjcompress/modules/')
 sys.path.append('/home/hch/Desktop/trjcompress/RL/')
@@ -183,8 +184,8 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
     ik = 0
     with torch.no_grad():
         for i, batch in iterator:
-            if i == 20:
-                break
+            # if i == 20:
+            #     break
             print(f"batch {i}")
             batch = batch[:-1]
 
@@ -248,7 +249,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                     ik += 1
                     continue
                 # time_seq3 += time_list[ik]
-                # batch_eval_metric_loss_seq3.append(s_loss_seq3)
+                batch_eval_metric_loss_seq3.append(s_loss_seq3)
 
                 # tdtr，一个完整的算法运算和获取
 
@@ -268,29 +269,29 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                     tic2 = time.perf_counter()
                     time_adp += tic2 - tic1
                     s_loss_adp = maxErr
-                # batch_eval_metric_loss_adp.append(s_loss_adp)
+                batch_eval_metric_loss_adp.append(s_loss_adp)
 
-                # error-search
-                if metric == "ss":
-                    tic1 = time.perf_counter()
-                    idx, maxErr = error_search(points, complen)
-                    o = 0
-                    while len(set(idx)) < complen:
-                        idx.append((idx[o] + idx[o + 2]) // 2)
-                        o += 1
-                    tic2 = time.perf_counter()
-                    time_error_search += tic2 - tic1
-                    idx.sort()
-                    comp_vid_ersh = [src_vid[i].item() for i in idx]
-                    # s_loss_ersh = sematic_simp(model, src_vid, comp_vid_ersh, vocab)
-                    comp_sort_gid_str = [str(src_gid[i]) for i in idx]
-                    vis_res += " ".join(comp_sort_gid_str) + "\n"
-                else:
-                    tic1 = time.perf_counter()
-                    # idx, maxErr = error_search(points, complen)
-                    tic2 = time.perf_counter()
-                    time_error_search += tic2 - tic1
-                    # s_loss_ersh = maxErr
+                # # error-search
+                # if metric == "ss":
+                #     tic1 = time.perf_counter()
+                #     idx, maxErr = error_search(points, complen)
+                #     o = 0
+                #     while len(set(idx)) < complen:
+                #         idx.append((idx[o] + idx[o + 2]) // 2)
+                #         o += 1
+                #     tic2 = time.perf_counter()
+                #     time_error_search += tic2 - tic1
+                #     idx.sort()
+                #     comp_vid_ersh = [src_vid[i].item() for i in idx]
+                #     # s_loss_ersh = sematic_simp(model, src_vid, comp_vid_ersh, vocab)
+                #     comp_sort_gid_str = [str(src_gid[i]) for i in idx]
+                #     vis_res += " ".join(comp_sort_gid_str) + "\n"
+                # else:
+                #     tic1 = time.perf_counter()
+                #     idx, maxErr = error_search(points, complen)
+                #     tic2 = time.perf_counter()
+                #     time_error_search += tic2 - tic1
+                #     s_loss_ersh = maxErr
                 # batch_eval_metric_loss_error_search.append(s_loss_ersh)
 
                 # bottom-up
@@ -310,7 +311,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                     tic2 = time.perf_counter()
                     time_btup += tic2 - tic1
                     s_loss_btup = maxErr
-                # batch_eval_metric_loss_btup.append(s_loss_btup)
+                batch_eval_metric_loss_btup.append(s_loss_btup)
 
                 # RLOnline
                 if metric == "ss":
@@ -329,7 +330,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                     tic2 = time.perf_counter()
                     time_RL += tic2 - tic1
                     s_loss_rl = maxErr
-                # batch_eval_metric_loss_RL.append(s_loss_rl)
+                batch_eval_metric_loss_RL.append(s_loss_rl)
 
                 # # bellman
                 # if metric == "ss":
@@ -345,8 +346,8 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                 #     tic2 = time.perf_counter()
                 #     time_bellman += tic2 - tic1
                 #     s_loss_bell = maxErr
-                # # batch_eval_metric_loss_bellman.append(s_loss_bell)
-                #
+                # batch_eval_metric_loss_bellman.append(s_loss_bell)
+
                 # # span-search
                 # if metric == "ss":
                 #     tic1 = time.perf_counter()
@@ -357,11 +358,11 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                 #     # s_loss_span_search = sematic_simp(model, src_vid, comp_vid_bell, vocab)
                 # else:
                 #     tic1 = time.perf_counter()
-                #     # idx, maxErr = span_search(points, complen)
+                #     idx, maxErr = span_search(points, complen)
                 #     tic2 = time.perf_counter()
                 #     time_bellman += tic2 - tic1
-                #     # s_loss_span_search = maxErr
-                # # batch_eval_metric_loss_span_search.append(s_loss_span_search)
+                #     s_loss_span_search = maxErr
+                # batch_eval_metric_loss_span_search.append(s_loss_span_search)
 
                 ik += 1
             if (i + 1) % 10 == 0:
@@ -386,8 +387,10 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
           f"bellman\t|\t推理用时:\t{time_bellman} |\t{metric}:\t{np.mean(batch_eval_metric_loss_bellman)}\n" \
           f"span_search\t|\t推理用时:\t{time_bellman} |\t{metric}:\t{np.mean(batch_eval_metric_loss_span_search)}\n"
     print(res)
-    with open("../datasets/exp_2", "a") as f:
+    with open(f"../datasets/exp_2_{ratio}", "w") as f:
         f.write(vis_res)
+
+    csv_writer.writerow([time_btup, time_adp, time_RL, np.sum(time_list)])
     return time_res + res
 
 
@@ -448,11 +451,22 @@ if __name__ == '__main__':
     RL.load('../RL/save/0.00039190653824900003_ratio_0.1/')  # your_trained_model your_trained_model_skip
 
     # --------------------------------------------------------------------
-    with open(f"../experiments/result_{checkpoint}_{metric}_{datasets}_x_0818_time", "a") as f:
-        # 1-5对应90%-50%的压缩率
-        range_ = range(5, 6)
-        for ratio in range_:
-            print(f"压缩率: {ratio / 10} \n------------------------")
-            head = f"压缩率: {ratio / 10} \n------------------------\n"
-            res = compress_seq3(data_loader, ratio / 10, model, vocab, region, metric)
-            f.write(head + res + "\n")
+    file = open(f"../experiments/result_{checkpoint}_{metric}_{datasets}_x_0818_time.csv", 'a+', encoding='utf-8',
+                newline='')
+    range_ = range(1, 6)
+    csv_writer = csv.writer(file)
+    csv_writer.writerow([f'v1', 'v2', 'v3', 'v4', 'v5'])
+    for ratio in range_:
+        # csv_writer.writerow(['','','',''])
+        print(f"压缩率: {ratio / 10} \n------------------------")
+        head = f"压缩率: {ratio / 10} \n------------------------\n"
+        res = compress_seq3(data_loader, ratio / 10, model, vocab, region, metric)
+    file.close()
+    # with open(f"../experiments/result_{checkpoint}_{metric}_{datasets}_x_0818_time", "a") as f:
+    #     # 1-5对应90%-50%的压缩率
+    #     range_ = range(1, 6)
+    #     for ratio in range_:
+    #         print(f"压缩率: {ratio / 10} \n------------------------")
+    #         head = f"压缩率: {ratio / 10} \n------------------------\n"
+    #         res = compress_seq3(data_loader, ratio / 10, model, vocab, region, metric)
+    #         f.write(head + res + "\n")
