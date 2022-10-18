@@ -1,7 +1,7 @@
 import torch
 from torch.nn import functional as F
 
-from models.seq3_losses import _kl_div, kl_length, pairwise_loss, energy_, energy_2,r
+from models.seq3_losses import _kl_div, kl_length, pairwise_loss, energy_, energy_2, r
 from models.seq3_utils import sample_lengths
 from modules.helpers import sequence_mask, avg_vectors, module_grad_wrt_loss
 from modules.training.trainer import Trainer
@@ -29,7 +29,7 @@ class Seq3Trainer(Trainer):
         self.len_max = self.anneal_init(self.config["model"]["max_length"])
         self.mask = self.config["model"]["mask"]
         self.mask_fn = self.config["model"]["mask_fn"]
-        self.metric = self.config["model"].get("metric",None)
+        self.metric = self.config["model"].get("metric", None)
 
     def _debug_grads(self):
         return list(sorted([(n, p.grad) for n, p in
@@ -61,7 +61,7 @@ class Seq3Trainer(Trainer):
                                      "rnn"))
         return c_grad_norm
 
-    def _topic_loss(self, inp, dec1, src_lengths, trg_lengths,vocab):
+    def _topic_loss(self, inp, dec1, src_lengths, trg_lengths, vocab):
         """
         Compute the pairwise distance of various outputs of the seq^3 architecture.
         Args:
@@ -75,10 +75,10 @@ class Seq3Trainer(Trainer):
         enc_mask = sequence_mask(src_lengths).unsqueeze(-1).float()
         dec_mask = sequence_mask(trg_lengths - 1).unsqueeze(-1).float()
 
-        enc_embs = self.model.inp_encoder.embed(inp,vocab)
+        enc_embs = self.model.inp_encoder.embed(inp, vocab)
         if dec1[3] is None:
             print("dec1[3] is none")
-        dec_embs = self.model.compressor.embed.expectation(dec1[3],vocab)
+        dec_embs = self.model.compressor.embed.expectation(dec1[3], vocab)
 
         if self.config["model"]["topic_idf"]:
             enc1_energies = self.model.idf(inp)
@@ -187,15 +187,15 @@ class Seq3Trainer(Trainer):
 
         return mean(loss)
 
-    def _sematic_loss(self, inp, dec1, src_lengths, trg_lengths,vocab):
+    def _sematic_loss(self, inp, dec1, src_lengths, trg_lengths, vocab):
 
         enc_mask = sequence_mask(src_lengths).unsqueeze(-1).float()
         dec_mask = sequence_mask(trg_lengths - 1).unsqueeze(-1).float()
 
-        enc_embs = self.model.inp_encoder.embed(inp,vocab) * enc_mask
+        enc_embs = self.model.inp_encoder.embed(inp, vocab) * enc_mask
         if dec1[3] is None:
             print("dec1[3] is none")
-        dec_embs = self.model.compressor.embed.expectation(dec1[3],vocab) * dec_mask
+        dec_embs = self.model.compressor.embed.expectation(dec1[3], vocab) * dec_mask
 
         # 先对source序列中的点进行遍历
         max_len = enc_embs.size(1)
@@ -297,7 +297,6 @@ class Seq3Trainer(Trainer):
                 mask_matrix = m_zeros.scatter(1, inp_x, 1)
                 mask_matrix[:, 0] = 0
 
-
         outputs = self.model(inp_x, inp_xhat,
                              x_lengths, latent_lengths, sampling, tau, mask_matrix, region=region, vocab=vocab)
 
@@ -344,7 +343,7 @@ class Seq3Trainer(Trainer):
         if self.config["model"]["topic_loss"]:
             topic_loss, attentions = self._topic_loss(inp_x, dec1,
                                                       x_lengths,
-                                                      latent_lengths,vocab)
+                                                      latent_lengths, vocab)
             batch_outputs["attention"] = attentions
             losses.append(topic_loss)
         else:
@@ -364,9 +363,9 @@ class Seq3Trainer(Trainer):
             m_zeros_y = torch.zeros(comp.size(0), comp.size(1), vocab.size).to(inp_x)
             X = m_zeros_x.scatter(2, inp_x.unsqueeze(2), 1)
             Y = m_zeros_y.scatter(2, comp.unsqueeze(2), 1)
-            cross_matrix = torch.bmm(X.float(),Y.transpose(1,2).float())
+            cross_matrix = torch.bmm(X.float(), Y.transpose(1, 2).float())
             tmp = cross_matrix.sum(-1)
-            zaoshengdian = torch.where(tmp > 1,1,0).sum()
+            zaoshengdian = torch.where(tmp > 1, 1, 0).sum()
             # neo = tmp.sum() - zaoshengdian
             neo = tmp.sum() / latent_lengths.float().sum()
             # print(neo,zaoshengdian)
@@ -443,7 +442,6 @@ class Seq3Trainer(Trainer):
                                                region=region)
                 losses = []
 
-
                 if self.metric == 'sed' or self.metric == 'ped':
                     # --------------------------------------------------------------
                     # 1 - SED metric
@@ -456,7 +454,6 @@ class Seq3Trainer(Trainer):
                     loss_semantic += self._sematic_loss(inp_src, dec, src_lengths, latent_lengths, vocab)
                 # else:
 
-
                 # s_loss_ = 0
                 # for _src, _src_len, comp in zip(inp_src, src_lengths, dec[3].max(-1)[1]):
                 #     _src = _src[:_src_len]
@@ -466,7 +463,7 @@ class Seq3Trainer(Trainer):
             lamda = 1
             # print("sed loss: ",loss_sed,"semantic loss: ",loss_semantic)
             loss_sum = loss_sed + lamda * loss_semantic  # + loss_sum + sum(losses).item()
-        return loss_sum
+        return loss_sum / i_batch
 
     def _get_vocab(self):
         if isinstance(self.train_loader, (list, tuple)):

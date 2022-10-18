@@ -1,6 +1,7 @@
 import os
 from random import sample
 import sys
+
 sys.path.append('/home/hch/Desktop/trjcompress/')
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -10,8 +11,6 @@ import numpy as np
 from generate.online.OnlineCED import CEDer
 from generate.utils import sed_loss
 from models.constants import BOS
-
-
 
 import pickle
 import time
@@ -62,6 +61,8 @@ def load_model(path, checkpoint, src_file, device):
     model = Seq2Seq2Seq(n_tokens, **config["model"]).to(device)
     model.load_state_dict(checkpoint["model"])
     model.eval()
+
+    model.compressor.layer_norm = False
 
     ##############################################
 
@@ -138,7 +139,7 @@ def compress_seq3_online(data_loader, max_ratio, model, vocab, region, metric):
                 batch_eval_metric_loss_seq3.append(s_loss_seq3)
 
     print(np.mean(batch_eval_metric_loss_seq3))
-    # return np.mean(timelist)
+    return np.mean(timelist)
 
 
 def stream4batch(batch, model, mask_matrix, vocab, region, timelist):
@@ -151,6 +152,7 @@ def stream4batch(batch, model, mask_matrix, vocab, region, timelist):
     is_stream = False
 
     batch, max_length = inp_src.size()
+    start_time = time.time()
     for i in range(src_lengths):
         if i + 1 < threshold:
             cache_id = inp_src[:, :i + 1]
@@ -161,7 +163,7 @@ def stream4batch(batch, model, mask_matrix, vocab, region, timelist):
             cache_id_trg = torch.cat([sos_id, cache_id], dim=-1)
             _src_length = torch.tensor([cache_id.shape[1]]).to(src_lengths)
             _trg_length = torch.tensor([cache_id_trg.shape[1]]).to(trg_lengths)
-            # start_time = time.time()
+
             outputs = model.generate_online(cache_id, cache_id_trg,
                                             _src_length,
                                             _trg_length,
@@ -172,12 +174,12 @@ def stream4batch(batch, model, mask_matrix, vocab, region, timelist):
                                             Cache_out=cache_out,
                                             mask_matrix=mask_matrix)
 
-            # excute_time = time.time() - start_time
+            excute_time = time.time() - start_time
             # print(excute_time)
-            # timelist.append(excute_time)
+            timelist.append(excute_time / (i + 1))
             _, _, cache_h, cache_out = outputs
             is_stream = True
-            # break
+            break
     return outputs
 
 
@@ -189,10 +191,11 @@ out_file = ""
 torch.manual_seed(seed)
 if torch.cuda.is_available():
     torch.cuda.manual_seed(seed)
-metric = "ss"
-datasets = "infer"
+metric = "dad"
+datasets = "eval"
 
-checkpoint = "seq3.full_-ped"
+checkpoint = "seq3.full_-ped-tdrive"
+# checkpoint = "seq3.full_-ped"
 
 src_file = os.path.join(DATA_DIR, datasets + ".src")
 with open(os.path.join(DATA_DIR, 'pickle.txt'), 'rb') as f:
@@ -200,12 +203,13 @@ with open(os.path.join(DATA_DIR, 'pickle.txt'), 'rb') as f:
 region = pickle.loads(var_a)
 
 data_loader, model, vocab = load_model(path, checkpoint, src_file, device)
-ceder = CEDer()
+# ceder = CEDer(datasets="eval", checkpoint="seq3.full_-ped-tdrive")
+ceder = None
 # --------------------------------------------------------------------
 # 1-5对应90%-50%的压缩率
 range_ = range(1, 6)
 for ratio in range_:
     print(f"压缩率: {ratio / 10} \n------------------------")
     head = f"压缩率: {ratio / 10} \n------------------------\n"
-    compress_seq3_online(data_loader, ratio / 10, model, vocab, region, metric)
-    # print(res)
+    res = compress_seq3_online(data_loader, ratio / 10, model, vocab, region, metric)
+    print(res)

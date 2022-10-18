@@ -1,5 +1,8 @@
 import os
+import pickle
 import sys
+
+from sys_config import DATA_DIR
 
 sys.path.append('/home/hch/RLTS/')
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -33,7 +36,7 @@ def run_comp(): #Training
     check = 999999
     training = []
     validation = []
-    Round = 10
+    Round = 5
     while Round!=0:
         Round = Round - 1
         for episode in range(0, traj_amount):
@@ -66,8 +69,9 @@ def run_comp(): #Training
             train_e = env.output(episode, 'T') #'T' means Training, 'V' means Validation, and 'V-VIS' for visualization on Validation
             show = 50
             if episode % show == 0:
-                 eva = run_online([i for i in range(traj_amount, traj_amount + valid_amount - 1)])
+                 eva_ = run_online([i for i in range(2500, 2500 + valid_amount - 1)])
                  #print('eva', eva)
+                 eva = [i[1] for i in eva_]
                  res = sum(eva)/len(eva)
                  training.append(train_e)
                  validation.append(res)
@@ -81,13 +85,17 @@ def run_comp(): #Training
 
 if __name__ == "__main__":
     # building subtrajectory env
-    traj_path = '../TrajData/Geolife_out/'
-    traj_amount = 1000
-    valid_amount = 100
+    traj_path = '../datasets/RLtrj.src'
+    with open(os.path.join(DATA_DIR, 'pickle.txt'), 'rb') as f:
+        var_a = pickle.load(f)
+    region = pickle.loads(var_a)
+
+    traj_amount = 2500
+    valid_amount = 1000
     a_size = 3
     s_size = 3
-    ratio = 0.1
-    env = TrajComp(traj_path, traj_amount + valid_amount, a_size, s_size)
+    ratio = 0.3
+    env = TrajComp(traj_path, traj_amount + valid_amount, region, a_size, s_size)
     RL = PolicyGradient(env.n_features, env.n_actions)
     #RLOnline.load('./save/your_model/')
     start = time.time()

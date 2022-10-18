@@ -17,7 +17,7 @@ TRAINED_PATH = os.path.join(BASE_DIR, "checkpoints")
 
 EMBS_PATH = os.path.join(BASE_DIR, "embeddings")
 
-DATA_DIR = os.path.join(BASE_DIR, 'datasets/tdrive')
+DATA_DIR = os.path.join(BASE_DIR, 'datasets/geolife')
 
 EXP_DIR = os.path.join(BASE_DIR, 'experiments')
 
@@ -26,7 +26,7 @@ MODEL_DIRS = ["models", "modules", "utils"]
 
 VIS = {
     "server": "http://localhost",
-    "enabled": True,
+    "enabled": False,
     "port": 8097,
     "base_url": "/",
     "http_proxy_host": None,

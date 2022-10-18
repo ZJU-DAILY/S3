@@ -193,14 +193,16 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
             (inp_src, out_src, inp_trg, out_trg,
              src_lengths, trg_lengths) = batch
 
-            # trg_lengths = torch.clamp(src_lengths * max_ratio, min=5, max=25)
-            trg_lengths = torch.clamp(src_lengths * max_ratio, min=5, max=125)
+            trg_lengths = torch.clamp(src_lengths * max_ratio, min=5, max=25)
+            # trg_lengths = torch.clamp(src_lengths * max_ratio, min=min(5, int((src_lengths.max().item() - 50) * 0.5)),
+            #                           max=int((src_lengths.max().item() + 50) * 0.5))
             trg_lengths = torch.floor(trg_lengths).int()
 
             m_zeros = torch.zeros(inp_src.size(0), vocab.size).to(inp_src)
             mask_matrix = m_zeros.scatter(1, inp_src, 1)
             mask_matrix[:, 0] = 0
 
+            rollback_time_list = time_list.copy()
             outputs = model(inp_src, inp_trg, src_lengths, trg_lengths,
                             sampling=0, mask_matrix=mask_matrix, vocab=vocab, region=region,
                             decoder_time_list=time_list)
@@ -212,7 +214,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                 comp_vid = comp_vid[:_trg_len].tolist()
                 if 0 in comp_vid:
                     print("comp_vid has zero,so we rollback...")
-                    # time_list = rollback_time_list
+                    time_list = rollback_time_list.copy()
                     ik += 1
                     continue
                 src_vid = src_vid[:_src_len]
@@ -249,7 +251,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                     ik += 1
                     continue
                 # time_seq3 += time_list[ik]
-                batch_eval_metric_loss_seq3.append(s_loss_seq3)
+                # batch_eval_metric_loss_seq3.append(s_loss_seq3)
 
                 # tdtr，一个完整的算法运算和获取
 
@@ -269,29 +271,29 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                     tic2 = time.perf_counter()
                     time_adp += tic2 - tic1
                     s_loss_adp = maxErr
-                batch_eval_metric_loss_adp.append(s_loss_adp)
+                # batch_eval_metric_loss_adp.append(s_loss_adp)
 
-                # # error-search
-                # if metric == "ss":
-                #     tic1 = time.perf_counter()
-                #     idx, maxErr = error_search(points, complen)
-                #     o = 0
-                #     while len(set(idx)) < complen:
-                #         idx.append((idx[o] + idx[o + 2]) // 2)
-                #         o += 1
-                #     tic2 = time.perf_counter()
-                #     time_error_search += tic2 - tic1
-                #     idx.sort()
-                #     comp_vid_ersh = [src_vid[i].item() for i in idx]
-                #     # s_loss_ersh = sematic_simp(model, src_vid, comp_vid_ersh, vocab)
-                #     comp_sort_gid_str = [str(src_gid[i]) for i in idx]
-                #     vis_res += " ".join(comp_sort_gid_str) + "\n"
-                # else:
-                #     tic1 = time.perf_counter()
-                #     idx, maxErr = error_search(points, complen)
-                #     tic2 = time.perf_counter()
-                #     time_error_search += tic2 - tic1
-                #     s_loss_ersh = maxErr
+                # error-search
+                if metric == "ss":
+                    tic1 = time.perf_counter()
+                    idx, maxErr = error_search(points, complen)
+                    o = 0
+                    while len(set(idx)) < complen:
+                        idx.append((idx[o] + idx[o + 2]) // 2)
+                        o += 1
+                    tic2 = time.perf_counter()
+                    time_error_search += tic2 - tic1
+                    idx.sort()
+                    comp_vid_ersh = [src_vid[i].item() for i in idx]
+                    # s_loss_ersh = sematic_simp(model, src_vid, comp_vid_ersh, vocab)
+                    comp_sort_gid_str = [str(src_gid[i]) for i in idx]
+                    vis_res += " ".join(comp_sort_gid_str) + "\n"
+                else:
+                    tic1 = time.perf_counter()
+                    idx, maxErr = error_search(points, complen)
+                    tic2 = time.perf_counter()
+                    time_error_search += tic2 - tic1
+                    s_loss_ersh = maxErr
                 # batch_eval_metric_loss_error_search.append(s_loss_ersh)
 
                 # bottom-up
@@ -311,7 +313,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                     tic2 = time.perf_counter()
                     time_btup += tic2 - tic1
                     s_loss_btup = maxErr
-                batch_eval_metric_loss_btup.append(s_loss_btup)
+                # batch_eval_metric_loss_btup.append(s_loss_btup)
 
                 # RLOnline
                 if metric == "ss":
@@ -330,7 +332,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
                     tic2 = time.perf_counter()
                     time_RL += tic2 - tic1
                     s_loss_rl = maxErr
-                batch_eval_metric_loss_RL.append(s_loss_rl)
+                # batch_eval_metric_loss_RL.append(s_loss_rl)
 
                 # # bellman
                 # if metric == "ss":
@@ -387,6 +389,7 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
           f"bellman\t|\t推理用时:\t{time_bellman} |\t{metric}:\t{np.mean(batch_eval_metric_loss_bellman)}\n" \
           f"span_search\t|\t推理用时:\t{time_bellman} |\t{metric}:\t{np.mean(batch_eval_metric_loss_span_search)}\n"
     print(res)
+    print(f"{time_btup}\n{time_adp}\n{time_RL}\n{np.sum(time_list)}")
     with open(f"../datasets/exp_2_{ratio}", "w") as f:
         f.write(vis_res)
 
@@ -415,12 +418,12 @@ if __name__ == '__main__':
 
     if metric == 'ped' or metric == 'dad':
         # checkpoint = "seq3.full_-ped-tdrive"
-        checkpoint = "seq3.full_-sed-tdrive"
-        # checkpoint = "seq3.full_-ped"
+        # checkpoint = "seq3.full_-sed-tdrive"
+        checkpoint = "seq3.full_-ped"
     elif metric == 'sed':
         # checkpoint = "seq3.full_-ped-tdrive"
-        checkpoint = "seq3.full_-sed-tdrive"
-        # checkpoint = "seq3.full_-sed"
+        # checkpoint = "seq3.full_-sed-tdrive"
+        checkpoint = "seq3.full_-sed"
         # checkpoint = "seq3.full_-noAttn"
     elif metric == 'ss':
         # checkpoint = "seq3.full_-noAttn"
@@ -451,7 +454,7 @@ if __name__ == '__main__':
     RL.load('../RL/save/0.00039190653824900003_ratio_0.1/')  # your_trained_model your_trained_model_skip
 
     # --------------------------------------------------------------------
-    file = open(f"../experiments/result_{checkpoint}_{metric}_{datasets}_x_0818_time.csv", 'a+', encoding='utf-8',
+    file = open(f"../experiments/result_{checkpoint}_{metric}_{datasets}_x_0913_time.csv", 'a+', encoding='utf-8',
                 newline='')
     range_ = range(1, 6)
     csv_writer = csv.writer(file)

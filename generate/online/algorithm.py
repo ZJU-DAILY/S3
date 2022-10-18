@@ -1,3 +1,4 @@
+import csv
 import os
 import sys
 
@@ -145,7 +146,7 @@ def compress_squish(src, points, max_ratio, metric):
 
     print(f"squish压缩率 {max_ratio},耗时 {np.min(timelist)}, error {np.mean(err)}")
     # print(f"squish-e压缩率 {max_ratio},耗时 {np.min(timelist2)}")
-    return compRes
+    return compRes, np.min(timelist), np.mean(err)
 
 
 def compress_squish_e(src, points, max_ratio, metric):
@@ -176,7 +177,7 @@ def compress_squish_e(src, points, max_ratio, metric):
         err.append(maxErr_)
 
     print(f"squish_e压缩率 {max_ratio},耗时 {np.mean(timelist)}, error {np.mean(err)}")
-    return compRes
+    return compRes, np.min(timelist), np.mean(err)
 
 
 def compress_sttrace(src, points, max_ratio, metric):
@@ -204,7 +205,7 @@ def compress_sttrace(src, points, max_ratio, metric):
         err.append(maxErr_)
 
     print(f"sttrace压缩率 {max_ratio},耗时 {np.min(timelist)}, error {np.mean(err)}")
-    return compRes
+    return compRes, np.min(timelist), np.mean(err)
 
 
 class RLAgent:
@@ -230,7 +231,8 @@ class RLAgent:
                 done = True
             else:
                 done = False
-            action = self.RL.quick_time_action(observation)  # matrix implementation for fast efficiency when the model is ready
+            action = self.RL.quick_time_action(
+                observation)  # matrix implementation for fast efficiency when the model is ready
             observation_, _ = self.env.step(episode, action, index, done,
                                             'V')  # 'T' means Training, and 'V' means Validation
             observation = observation_
@@ -257,10 +259,11 @@ class RLAgent:
                     continue
             err.append(max_err)
         print(f"rlts压缩率 {ratio}, 耗时 {np.mean(timelist)}, error {np.mean(err)}")
+        return np.min(timelist), np.mean(err)
 
 
 if __name__ == '__main__':
-    datasets = "len250.src"
+    datasets = "len250"
     src_file = os.path.join(DATA_DIR, datasets + ".src")
     with open(os.path.join(DATA_DIR, 'pickle.txt'), 'rb') as f:
         var_a = pickle.load(f)
@@ -268,11 +271,20 @@ if __name__ == '__main__':
     points, src = readData(src_file, region)
     metric = 'dad'
     agent = RLAgent(datasets, region, len(points), metric)
-    ceder = CEDer()
+    ceder = CEDer(datasets="eval", checkpoint="seq3.full_-ped-tdrive")
+
+    # file = open(f"../../experiments/online_{metric}_{datasets}.csv", 'a+', encoding='utf-8',
+    #             newline='')
+    # csv_writer = csv.writer(file)
+    # csv_writer.writerow([f'v1', 'v2', 'v3', 'v4', 'v5'])
 
     for i in range(4, 5):
         ratio = 0.1 * (i + 1)
-        compress_sttrace(src, points, ratio, metric)
-        compress_squish(src, points, ratio, metric)
-        compress_squish_e(src, points, ratio, metric)
-        agent.run_all(len(points), ratio, metric)
+        _, t1, e1 = compress_sttrace(src, points, ratio, metric)
+        _, t2, e2 = compress_squish(src, points, ratio, metric)
+        _, t3, e3 = compress_squish_e(src, points, ratio, metric)
+        t4, e4 = agent.run_all(len(points), ratio, metric)
+
+        # csv_writer.writerow([e1, e2, e3, e4])
+
+    # file.close()
