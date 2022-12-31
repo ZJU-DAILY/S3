@@ -7,7 +7,7 @@ from torch.nn.utils import clip_grad_norm_
 from modules.training.base_trainer import BaseTrainer
 from utils._logging import epoch_progress
 from utils.training import save_checkpoint
-
+from apex import amp
 
 class Trainer(BaseTrainer):
     """
@@ -95,6 +95,8 @@ class Trainer(BaseTrainer):
             losses.append(loss_list)
 
             # back-propagate
+            # with amp.scale_loss(loss_sum, self.optimizers[0]) as scaled_loss:
+            #     scaled_loss.backward()
             loss_sum.backward()
             if self.clip is not None:
                 # clip_grad_norm_(self.model.parameters(), self.clip)

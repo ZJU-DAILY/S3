@@ -429,7 +429,7 @@ class AttSeqDecoder(nn.Module):
         # 轨迹点嵌入
         self.embed = Embed(trg_ntokens, emb_size, _gcn_emb_weights, self.gnn_latent_dim,
                            noise=embed_noise,
-                           dropout=embed_dropout)
+                           dropout=embed_dropout, gnn_used=self.gnn_used)
         if self.gnn_used:
             emb_size += self.gnn_latent_dim
         # the output size of the ho token: ho = [ h || c]
@@ -763,7 +763,8 @@ class AttSeqDecoder(nn.Module):
                                           sampling_prob, argmax, hard, tau, mask_matrix, vocab)
             if d_i is not None:
                 tmp = d_i.max(-1)[1].unsqueeze(1)
-                mask_matrix = mask_matrix.scatter(1, tmp, 0)
+                if mask_matrix is not None:
+                    mask_matrix = mask_matrix.scatter(1, tmp, 0)
 
             if word_dropout > 0 and i > 0:
                 e_i, mask = drop_tokens(e_i, word_dropout)

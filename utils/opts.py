@@ -77,7 +77,7 @@ def seq2seq2seq_options():
     parser.add_argument('--visdom', action='store_true')
     parser.add_argument('--transfer-lm')
     parser.add_argument('--device', default="auto")
-    parser.add_argument('--cores', type=int, default=4)
+    parser.add_argument('--cores', type=int, default=1)
     parser.add_argument('--source', nargs='*',
                         default=["models", "modules", "utils"])
 
@@ -93,9 +93,9 @@ def seq2seq2seq_options():
     config["desc"] = args.desc
 
     if args.device == "auto":
-        args.device = torch.device("cuda" if torch.cuda.is_available()
-                                   else "cpu")
-        # args.device = "cpu"
+        # args.device = torch.device("cuda" if torch.cuda.is_available()
+        #                            else "cpu")
+        args.device = torch.device("cpu")
 
     if args.source is None:
         args.source = []

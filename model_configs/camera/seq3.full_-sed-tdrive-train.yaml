@@ -19,8 +19,8 @@ prior:
 
 data:
   base_dir: ../../datasets/tdrive
-  train_path: train_12500.src # path to the training data (only source!!!)
-  val_path: val_100.src  # path to the source validation data
+  train_path: train.src # path to the training data (only source!!!)
+  val_path: val.src  # path to the source validation data
   ref_path: eval.src    # path to the target development data (验证集，dev set)
 
   seq_len: 50   # maximum length of source texts

@@ -46,7 +46,7 @@ class Embed(nn.Module):
                  embeddings=None,
                  noise=.0,
                  dropout=.0,
-                 trainable=True, grad_mask=None, norm=False,gnn_used=True):
+                 trainable=True, grad_mask=None, norm=False, gnn_used=True):
         """
         Define the layer of the model and perform the initializations
         of the layers (wherever it is necessary)
@@ -66,7 +66,7 @@ class Embed(nn.Module):
         self.embedding = nn.Embedding(num_embeddings=num_embeddings,
                                       embedding_dim=embedding_dim)
 
-        if gnn_used:
+        if self.gnn_used:
             self.node2vec = nn.Embedding.from_pretrained(torch.FloatTensor(gnn_emb_weights))
 
             self.GCN = nn.Linear(gnn_emb_weights.shape[1], gnn_latent_dim)

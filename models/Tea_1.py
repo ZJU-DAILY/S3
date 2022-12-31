@@ -35,6 +35,8 @@ from models.GL_home import gl_vocab
 
 from preprocess.SpatialRegionTools import SpacialRegion
 from sklearn.neighbors import KDTree
+import wandb
+from apex import amp
 
 # torch.backends.cudnn.enabled = False
 ####################################################################
@@ -79,9 +81,12 @@ with open(os.path.join(DATA_DIR, 'pickle.txt'), 'rb') as f:
     var_a = pickle.load(f)
 region = pickle.loads(var_a)
 
-with open('../datasets/gid2poi.txt', 'rb') as f:
-    var_a = pickle.load(f)
-gl_gid2poi = pickle.loads(var_a)
+if config["model"]["gnn_used"]:
+    with open('../datasets/gid2poi.txt', 'rb') as f:
+        var_a = pickle.load(f)
+    gl_gid2poi = pickle.loads(var_a)
+else:
+    gl_gid2poi = None
 
 # 需要保证第一个是训练集的路径，之后的顺序无所谓
 train_data = AEDataset([config["data"]["train_path"],config["data"]["val_path"]],
@@ -204,6 +209,8 @@ optimizer = torch.optim.Adam(parameters,
                              weight_decay=config["weight_decay"])
 
 model.to(opts.device)
+# model, optimizer = amp.initialize(model, optimizer, opt_level="O1") # 这里是“欧一”，不是“零一”
+
 print(model)
 
 total_params = sum(p.numel() for p in model.parameters())
@@ -362,20 +369,20 @@ def outs_callback(batch, losses, loss_list, batch_outputs):
                 _hyp = 'HYP', hyp[i], "255, 0, 0"
                 sample.append(_hyp)
 
-            if temps is not None:
-                _tmp = 'TMP', (list(map(str, temps[i])), temps[i]), "255, 0, 0"
-                sample.append(_tmp)
+            # if temps is not None:
+            #     _tmp = 'TMP', (list(map(str, temps[i])), temps[i]), "255, 0, 0"
+            #     sample.append(_tmp)
 
             _rec = 'REC', (rec[i], rec_losses[i]), "255, 0, 0"
             sample.append(_rec)
 
             samples.append(sample)
 
-        html_samples = samples2html(samples)
-        exp.update_value("samples", html_samples)
-        with open(os.path.join(EXP_DIR, f"{opts.name}.samples.html"),
-                  'w') as f:
-            f.write(html_samples)
+        # html_samples = samples2html(samples)
+        # exp.update_value("samples", html_samples)
+        # with open(os.path.join(EXP_DIR, f"{opts.name}.samples.html"),
+        #           'w') as f:
+        #     f.write(html_samples)
 
 
 
@@ -438,6 +445,10 @@ trainer = Seq3Trainer(model, train_loader, val_loader,
 
 assert not train_data.vocab.is_corrupt()
 assert not val_data.vocab.is_corrupt()
+
+# wandb.login(key='071c6a599f6f404d5fc01850bf0e47f6fd660bf4')
+# wandb.init(project="S3", entity="healec")
+# wandb.watch(model, log="all")
 
 lowest_loss = None
 

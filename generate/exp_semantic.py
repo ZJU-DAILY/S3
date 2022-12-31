@@ -38,6 +38,7 @@ from RL.rl_env_inc import TrajComp
 from RL.rl_brain import PolicyGradient
 from RL.data_utils import dad_op, dad_error
 from generate.batch.spanSearch import span_search, error_search
+import wandb
 
 
 # import torch_tensorrt
@@ -209,164 +210,164 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
 
             enc1, dec1, enc2, dec2 = outputs
 
-            for src_vid, _src_len, comp_vid, _trg_len in zip(inp_src, src_lengths, dec1[3].max(-1)[1], trg_lengths):
-
-                comp_vid = comp_vid[:_trg_len].tolist()
-                if 0 in comp_vid:
-                    print("comp_vid has zero,so we rollback...")
-                    time_list = rollback_time_list.copy()
-                    ik += 1
-                    continue
-                src_vid = src_vid[:_src_len]
-                complen = len(comp_vid)
-
-                comp_gid = [vocab.id2tok[p] for p in comp_vid]
-                src_gid = [vocab.id2tok[p.item()] for p in src_vid]
-                try:
-                    # points = [cell2meters(region, int(p)) for p in src_vid]
-                    points = [cell2gps(region, int(p)) for p in src_gid]
-                    # print("Our: \n",points)
-                    mp_src = {num: i for i, num in enumerate(src_gid)}
-                    comp_sort_gid = comp_gid.copy()
-                    # comp_sort_gid = getCompress(region, src_gid, comp_gid)[0]
-                    comp_sort_gid.sort(key=lambda j: mp_src[j])
-                    if src_gid[-1] not in comp_sort_gid:
-                        comp_sort_gid.append(src_gid[-1])
-                        complen = len(comp_sort_gid)
-                    if src_gid[0] not in comp_sort_gid:
-                        comp_sort_gid.insert(0, src_gid[0])
-                        complen = len(comp_sort_gid)
-                    # Tea
-                    if metric == "ss":
-                        # s_loss_seq3 = sematic_simp(model, src_vid, comp_vid, vocab)
-                        src_gid_str = [str(i) for i in src_gid]
-                        comp_sort_gid_str = [str(i) for i in comp_sort_gid]
-                        vis_res += " ".join(src_gid_str) + "\n"
-                        vis_res += " ".join(comp_sort_gid_str) + "\n"
-                    else:
-                        s_loss_seq3 = sed_loss(region, src_gid, comp_sort_gid, metric)
-                except Exception as e:
-                    print("exception occured")
-                    # time_list = rollback_time_list
-                    ik += 1
-                    continue
-                # time_seq3 += time_list[ik]
-                # batch_eval_metric_loss_seq3.append(s_loss_seq3)
-
-                # tdtr，一个完整的算法运算和获取
-
-                if metric == "ss":
-                    tic1 = time.perf_counter()
-                    _, idx, maxErr = adp(points, complen, 'sed')
-                    tic2 = time.perf_counter()
-                    time_adp += tic2 - tic1
-                    idx.sort()
-                    comp_vid_adp = [src_vid[i].item() for i in idx]
-                    comp_sort_gid_str = [str(src_gid[i]) for i in idx]
-                    vis_res += " ".join(comp_sort_gid_str) + "\n"
-                    # s_loss_adp = sematic_simp(model, src_vid, comp_vid_adp, vocab)
-                else:
-                    tic1 = time.perf_counter()
-                    _, idx, maxErr = adp(points, complen, metric)
-                    tic2 = time.perf_counter()
-                    time_adp += tic2 - tic1
-                    s_loss_adp = maxErr
-                # batch_eval_metric_loss_adp.append(s_loss_adp)
-
-                # error-search
-                if metric == "ss":
-                    tic1 = time.perf_counter()
-                    idx, maxErr = error_search(points, complen)
-                    o = 0
-                    while len(set(idx)) < complen:
-                        idx.append((idx[o] + idx[o + 2]) // 2)
-                        o += 1
-                    tic2 = time.perf_counter()
-                    time_error_search += tic2 - tic1
-                    idx.sort()
-                    comp_vid_ersh = [src_vid[i].item() for i in idx]
-                    # s_loss_ersh = sematic_simp(model, src_vid, comp_vid_ersh, vocab)
-                    comp_sort_gid_str = [str(src_gid[i]) for i in idx]
-                    vis_res += " ".join(comp_sort_gid_str) + "\n"
-                else:
-                    tic1 = time.perf_counter()
-                    idx, maxErr = error_search(points, complen)
-                    tic2 = time.perf_counter()
-                    time_error_search += tic2 - tic1
-                    s_loss_ersh = maxErr
-                # batch_eval_metric_loss_error_search.append(s_loss_ersh)
-
-                # bottom-up
-                if metric == "ss":
-                    tic1 = time.perf_counter()
-                    _, idx, maxErr = btup(points, complen, 'sed')
-                    tic2 = time.perf_counter()
-                    time_btup += tic2 - tic1
-                    comp_vid_btup = [src_vid[i].item() for i in idx]
-                    idx.sort()
-                    # s_loss_btup = sematic_simp(model, src_vid, comp_vid_btup, vocab)
-                    comp_sort_gid_str = [str(src_gid[i]) for i in idx]
-                    vis_res += " ".join(comp_sort_gid_str) + "\n"
-                else:
-                    tic1 = time.perf_counter()
-                    _, idx, maxErr = btup(points, complen, metric)
-                    tic2 = time.perf_counter()
-                    time_btup += tic2 - tic1
-                    s_loss_btup = maxErr
-                # batch_eval_metric_loss_btup.append(s_loss_btup)
-
-                # RLOnline
-                if metric == "ss":
-                    tic1 = time.perf_counter()
-                    idx, maxErr = RL_algorithm(complen, ik)
-                    tic2 = time.perf_counter()
-                    time_RL += tic2 - tic1
-                    idx.sort()
-                    comp_vid_rl = [src_vid[i].item() for i in idx]
-                    # s_loss_rl = sematic_simp(model, src_vid, comp_vid_rl, vocab)
-                    comp_sort_gid_str = [str(src_gid[i]) for i in idx]
-                    vis_res += " ".join(comp_sort_gid_str) + "\n"
-                else:
-                    tic1 = time.perf_counter()
-                    idx, maxErr = RL_algorithm(complen, ik)
-                    tic2 = time.perf_counter()
-                    time_RL += tic2 - tic1
-                    s_loss_rl = maxErr
-                # batch_eval_metric_loss_RL.append(s_loss_rl)
-
-                # # bellman
-                # if metric == "ss":
-                #     tic1 = time.perf_counter()
-                #     # idx, maxErr = bellman(points, complen, 'sed')
-                #     tic2 = time.perf_counter()
-                #     time_bellman += tic2 - tic1
-                #     # comp_vid_bell = [src_vid[i].item() for i in idx]
-                #     # s_loss_bell = sematic_simp(model, src_vid, comp_vid_bell, vocab)
-                # else:
-                #     tic1 = time.perf_counter()
-                #     # idx, maxErr = bellman(points, complen, 'sed')
-                #     tic2 = time.perf_counter()
-                #     time_bellman += tic2 - tic1
-                #     s_loss_bell = maxErr
-                # batch_eval_metric_loss_bellman.append(s_loss_bell)
-
-                # # span-search
-                # if metric == "ss":
-                #     tic1 = time.perf_counter()
-                #     # idx, maxErr = span_search(points, complen)
-                #     tic2 = time.perf_counter()
-                #     time_bellman += tic2 - tic1
-                #     # comp_vid_bell = [src_vid[i].item() for i in idx]
-                #     # s_loss_span_search = sematic_simp(model, src_vid, comp_vid_bell, vocab)
-                # else:
-                #     tic1 = time.perf_counter()
-                #     idx, maxErr = span_search(points, complen)
-                #     tic2 = time.perf_counter()
-                #     time_bellman += tic2 - tic1
-                #     s_loss_span_search = maxErr
-                # batch_eval_metric_loss_span_search.append(s_loss_span_search)
-
-                ik += 1
+            # for src_vid, _src_len, comp_vid, _trg_len in zip(inp_src, src_lengths, dec1[3].max(-1)[1], trg_lengths):
+            #
+            #     comp_vid = comp_vid[:_trg_len].tolist()
+            #     if 0 in comp_vid:
+            #         print("comp_vid has zero,so we rollback...")
+            #         time_list = rollback_time_list.copy()
+            #         ik += 1
+            #         continue
+            #     src_vid = src_vid[:_src_len]
+            #     complen = len(comp_vid)
+            #
+            #     comp_gid = [vocab.id2tok[p] for p in comp_vid]
+            #     src_gid = [vocab.id2tok[p.item()] for p in src_vid]
+            #     try:
+            #         # points = [cell2meters(region, int(p)) for p in src_vid]
+            #         points = [cell2gps(region, int(p)) for p in src_gid]
+            #         # print("Our: \n",points)
+            #         mp_src = {num: i for i, num in enumerate(src_gid)}
+            #         comp_sort_gid = comp_gid.copy()
+            #         # comp_sort_gid = getCompress(region, src_gid, comp_gid)[0]
+            #         comp_sort_gid.sort(key=lambda j: mp_src[j])
+            #         if src_gid[-1] not in comp_sort_gid:
+            #             comp_sort_gid.append(src_gid[-1])
+            #             complen = len(comp_sort_gid)
+            #         if src_gid[0] not in comp_sort_gid:
+            #             comp_sort_gid.insert(0, src_gid[0])
+            #             complen = len(comp_sort_gid)
+            #         # Tea
+            #         if metric == "ss":
+            #             # s_loss_seq3 = sematic_simp(model, src_vid, comp_vid, vocab)
+            #             src_gid_str = [str(i) for i in src_gid]
+            #             comp_sort_gid_str = [str(i) for i in comp_sort_gid]
+            #             vis_res += " ".join(src_gid_str) + "\n"
+            #             vis_res += " ".join(comp_sort_gid_str) + "\n"
+            #         else:
+            #             s_loss_seq3 = sed_loss(region, src_gid, comp_sort_gid, metric)
+            #     except Exception as e:
+            #         print("exception occured")
+            #         # time_list = rollback_time_list
+            #         ik += 1
+            #         continue
+            #     # time_seq3 += time_list[ik]
+            #     # batch_eval_metric_loss_seq3.append(s_loss_seq3)
+            #
+            #     # tdtr，一个完整的算法运算和获取
+            #
+            #     # if metric == "ss":
+            #     #     tic1 = time.perf_counter()
+            #     #     _, idx, maxErr = adp(points, complen, 'sed')
+            #     #     tic2 = time.perf_counter()
+            #     #     time_adp += tic2 - tic1
+            #     #     idx.sort()
+            #     #     comp_vid_adp = [src_vid[i].item() for i in idx]
+            #     #     comp_sort_gid_str = [str(src_gid[i]) for i in idx]
+            #     #     vis_res += " ".join(comp_sort_gid_str) + "\n"
+            #     #     # s_loss_adp = sematic_simp(model, src_vid, comp_vid_adp, vocab)
+            #     # else:
+            #     #     tic1 = time.perf_counter()
+            #     #     _, idx, maxErr = adp(points, complen, metric)
+            #     #     tic2 = time.perf_counter()
+            #     #     time_adp += tic2 - tic1
+            #     #     s_loss_adp = maxErr
+            #     # # batch_eval_metric_loss_adp.append(s_loss_adp)
+            #     #
+            #     # # error-search
+            #     # if metric == "ss":
+            #     #     tic1 = time.perf_counter()
+            #     #     idx, maxErr = error_search(points, complen)
+            #     #     o = 0
+            #     #     while len(set(idx)) < complen:
+            #     #         idx.append((idx[o] + idx[o + 2]) // 2)
+            #     #         o += 1
+            #     #     tic2 = time.perf_counter()
+            #     #     time_error_search += tic2 - tic1
+            #     #     idx.sort()
+            #     #     comp_vid_ersh = [src_vid[i].item() for i in idx]
+            #     #     # s_loss_ersh = sematic_simp(model, src_vid, comp_vid_ersh, vocab)
+            #     #     comp_sort_gid_str = [str(src_gid[i]) for i in idx]
+            #     #     vis_res += " ".join(comp_sort_gid_str) + "\n"
+            #     # else:
+            #     #     tic1 = time.perf_counter()
+            #     #     idx, maxErr = error_search(points, complen)
+            #     #     tic2 = time.perf_counter()
+            #     #     time_error_search += tic2 - tic1
+            #     #     s_loss_ersh = maxErr
+            #     # # batch_eval_metric_loss_error_search.append(s_loss_ersh)
+            #     #
+            #     # # bottom-up
+            #     # if metric == "ss":
+            #     #     tic1 = time.perf_counter()
+            #     #     _, idx, maxErr = btup(points, complen, 'sed')
+            #     #     tic2 = time.perf_counter()
+            #     #     time_btup += tic2 - tic1
+            #     #     comp_vid_btup = [src_vid[i].item() for i in idx]
+            #     #     idx.sort()
+            #     #     # s_loss_btup = sematic_simp(model, src_vid, comp_vid_btup, vocab)
+            #     #     comp_sort_gid_str = [str(src_gid[i]) for i in idx]
+            #     #     vis_res += " ".join(comp_sort_gid_str) + "\n"
+            #     # else:
+            #     #     tic1 = time.perf_counter()
+            #     #     _, idx, maxErr = btup(points, complen, metric)
+            #     #     tic2 = time.perf_counter()
+            #     #     time_btup += tic2 - tic1
+            #     #     s_loss_btup = maxErr
+            #     # # batch_eval_metric_loss_btup.append(s_loss_btup)
+            #
+            #     # RLOnline
+            #     # if metric == "ss":
+            #     #     tic1 = time.perf_counter()
+            #     #     idx, maxErr = RL_algorithm(complen, ik)
+            #     #     tic2 = time.perf_counter()
+            #     #     time_RL += tic2 - tic1
+            #     #     idx.sort()
+            #     #     comp_vid_rl = [src_vid[i].item() for i in idx]
+            #     #     # s_loss_rl = sematic_simp(model, src_vid, comp_vid_rl, vocab)
+            #     #     comp_sort_gid_str = [str(src_gid[i]) for i in idx]
+            #     #     vis_res += " ".join(comp_sort_gid_str) + "\n"
+            #     # else:
+            #     #     tic1 = time.perf_counter()
+            #     #     idx, maxErr = RL_algorithm(complen, ik)
+            #     #     tic2 = time.perf_counter()
+            #     #     time_RL += tic2 - tic1
+            #     #     s_loss_rl = maxErr
+            #     # batch_eval_metric_loss_RL.append(s_loss_rl)
+            #
+            #     # # bellman
+            #     # if metric == "ss":
+            #     #     tic1 = time.perf_counter()
+            #     #     # idx, maxErr = bellman(points, complen, 'sed')
+            #     #     tic2 = time.perf_counter()
+            #     #     time_bellman += tic2 - tic1
+            #     #     # comp_vid_bell = [src_vid[i].item() for i in idx]
+            #     #     # s_loss_bell = sematic_simp(model, src_vid, comp_vid_bell, vocab)
+            #     # else:
+            #     #     tic1 = time.perf_counter()
+            #     #     # idx, maxErr = bellman(points, complen, 'sed')
+            #     #     tic2 = time.perf_counter()
+            #     #     time_bellman += tic2 - tic1
+            #     #     s_loss_bell = maxErr
+            #     # batch_eval_metric_loss_bellman.append(s_loss_bell)
+            #
+            #     # # span-search
+            #     # if metric == "ss":
+            #     #     tic1 = time.perf_counter()
+            #     #     # idx, maxErr = span_search(points, complen)
+            #     #     tic2 = time.perf_counter()
+            #     #     time_bellman += tic2 - tic1
+            #     #     # comp_vid_bell = [src_vid[i].item() for i in idx]
+            #     #     # s_loss_span_search = sematic_simp(model, src_vid, comp_vid_bell, vocab)
+            #     # else:
+            #     #     tic1 = time.perf_counter()
+            #     #     idx, maxErr = span_search(points, complen)
+            #     #     tic2 = time.perf_counter()
+            #     #     time_bellman += tic2 - tic1
+            #     #     s_loss_span_search = maxErr
+            #     # batch_eval_metric_loss_span_search.append(s_loss_span_search)
+            #
+            #     ik += 1
             if (i + 1) % 10 == 0:
                 time_res += f"Tea {np.sum(time_list)} tdtr {time_adp} errSea {time_error_search} btup {time_btup} rl {time_RL} bell {time_bellman}\n"
 
@@ -400,10 +401,12 @@ def compress_seq3(data_loader, max_ratio, model, vocab, region, metric):
 if __name__ == '__main__':
     path = None
     seed = 1
-    device = "cuda"
+    device = "cpu"
     verbose = True
     out_file = ""
     torch.manual_seed(seed)
+    # wandb.login(key='071c6a599f6f404d5fc01850bf0e47f6fd660bf4')
+    # wandb.init(project="S3", entity="healec")
     if torch.cuda.is_available():
         torch.cuda.manual_seed(seed)
 
@@ -423,7 +426,8 @@ if __name__ == '__main__':
     elif metric == 'sed':
         # checkpoint = "seq3.full_-ped-tdrive"
         # checkpoint = "seq3.full_-sed-tdrive"
-        checkpoint = "seq3.full_-sed"
+        checkpoint = "seq3.full_-sed-tdrive-train"
+        # checkpoint = "seq3.full_-sed"
         # checkpoint = "seq3.full_-noAttn"
     elif metric == 'ss':
         # checkpoint = "seq3.full_-noAttn"
@@ -454,9 +458,9 @@ if __name__ == '__main__':
     RL.load('../RL/save/0.00039190653824900003_ratio_0.1/')  # your_trained_model your_trained_model_skip
 
     # --------------------------------------------------------------------
-    file = open(f"../experiments/result_{checkpoint}_{metric}_{datasets}_x_0913_time.csv", 'a+', encoding='utf-8',
+    file = open(f"../experiments/result_{checkpoint}_{metric}_{datasets}_x_1218_time.csv", 'a+', encoding='utf-8',
                 newline='')
-    range_ = range(1, 6)
+    range_ = range(5, 6)
     csv_writer = csv.writer(file)
     csv_writer.writerow([f'v1', 'v2', 'v3', 'v4', 'v5'])
     for ratio in range_:
