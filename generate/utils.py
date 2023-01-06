@@ -587,7 +587,7 @@ def frechetDist(P, Q):
 def topk(chosen_trj, datasets, k):
     res = []
     for i, trj in enumerate(datasets):
-        err = dtw_distance(chosen_trj, trj)
+        err = frechetDist(chosen_trj, trj)
         res.append([i, err])
     res.sort(key=functools.cmp_to_key(err_cmp))
     return res[:k]
@@ -677,7 +677,7 @@ if __name__ == '__main__':
     for j in range(1000):
         print("j ", j)
         for r in range(1, 6):
-            file = "../datasets/exp_2_" + str(r)
+            file = "../datasets/dad/exp_2_" + str(r)
             # print(r)
             with open(file, "r") as f:
                 ss = f.readlines()
