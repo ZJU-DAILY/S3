@@ -33,7 +33,7 @@ def span_search(points, W):
     return idx, err
 
 def error_search(points, W):
-    ratio = W / len(points)
+    ratio = round(W / len(points), 1)
     with open("/home/hch/Desktop/trjcompress/generate/batch/MinError/config.txt", "w") as f:
         f.write(f'data/tmp.trj	{len(points)}	{ratio}	3	2')
     write2file(points)
