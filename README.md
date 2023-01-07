@@ -1,6 +1,6 @@
 # A Lightweight Framework for Fast Trajectory Simplification
 
-![image-20230107134547723](C:/Users/ASUS/AppData/Roaming/Typora/typora-user-images/image-20230107134547723.png)
+<img src="S3_overview.JPG" alt="S3_overview" style="zoom: 67%;" />
 
 ## Introduction
 
@@ -19,6 +19,7 @@ This repository holds source code for the paper "A Lightweight Framework for Fas
 Prepare your own trajectory data with the following format and each trajectory is split by "\n". Put the data file into `./datasets` and run `python preprocess/createDataset.py`. The preprocessed datasets will be split into training sets, validation sets, and testing sets which is stored in `./datasets` folder.
 
 > [[116.51172, 39.92123], [116.51135, 39.93883],  [116.69171, 39.85182]]
+>
 > [[116.69171, 39.85184], [116.6917, 39.85184], [116.6916, 39.85177]]
 
 ```shell
