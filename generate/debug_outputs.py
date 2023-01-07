@@ -18,21 +18,11 @@ out_file = ""
 torch.manual_seed(seed)
 if torch.cuda.is_available():
     torch.cuda.manual_seed(seed)
-#
-# src_file = os.path.join(DATA_DIR, "gigaword/test_1951/input.txt")
-# out_file = os.path.join(DATA_DIR, "gigaword/test_1951/preds.txt")
 
-# src_file = os.path.join(DATA_DIR, "gigaword/test_1951/input_min8.txt")
-# src_file = os.path.join(DATA_DIR, "case.src")
 src_file = os.path.join("../datasets/geolife/infer.src")
-# src_file = os.path.join(DATA_DIR, "gigaword/dev/valid.src.small.txt")
-# src_file = os.path.join(BASE_DIR, "evaluation/DUC2003/input.txt")
-# src_file = os.path.join(BASE_DIR, "evaluation/DUC2004/input.txt")
 
 out_file = os.path.join(BASE_DIR, f"evaluation/{checkpoint}_preds.txt")
-# results = compress_seq3(checkpoint, src_file, out_file, device, True,
-#                         mode="debug")
+
 results = compress_seq3(path, checkpoint, src_file, out_file, device, True,
                         mode="debug")
 
-# seq3_attentions(results[:15], file=checkpoint + ".pdf")

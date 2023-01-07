@@ -15,8 +15,8 @@ from torch.distributions import Categorical
 from torch.utils.data import DataLoader
 
 from generate.utils import devectorize
-from models.seq3_trainer import Seq3Trainer
-from models.seq3_utils import compute_dataset_idf
+from models.s3_trainer import Seq3Trainer
+from models.s3_utils import compute_dataset_idf
 from modules.data.collates import Seq2SeqCollate, Seq2SeqOOVCollate
 from modules.data.datasets import AEDataset
 from modules.data.samplers import BucketBatchSampler
@@ -82,7 +82,7 @@ with open(os.path.join(DATA_DIR, 'pickle.txt'), 'rb') as f:
 region = pickle.loads(var_a)
 
 if config["model"]["gnn_used"]:
-    with open('../datasets/gid2poi.txt', 'rb') as f:
+    with open(os.path.join(DATA_DIR, 'gid2poi.txt'), 'rb') as f:
         var_a = pickle.load(f)
     gl_gid2poi = pickle.loads(var_a)
 else:
