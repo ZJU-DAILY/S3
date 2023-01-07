@@ -17,7 +17,7 @@ from modules.models import Seq2Seq2Seq
 from preprocess.SpatialRegionTools import cell2gps
 from utils.training import load_checkpoint
 import numpy as np
-from models.seq3_losses import r
+from models.s3_losses import r
 import os
 from sys_config import DATA_DIR
 

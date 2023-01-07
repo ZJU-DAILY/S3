@@ -6,8 +6,9 @@ from torch.autograd import Variable
 
 from models.constants import zero_poi
 from modules.helpers import sequence_mask, masked_normalization_inf
-from models.GL_home import get_gid2poi,get_vocab
+from models.GL_home import get_gid2poi, get_vocab
 from utils.data_parsing import devect
+
 
 class GaussianNoise(nn.Module):
     def __init__(self, stddev, mean=.0):
@@ -129,10 +130,10 @@ class Embed(nn.Module):
             for i in range(idx.size(-1)):
                 gid = vocab.id2tok.get(idx[i].item())
                 # zero_poi是一个等长的零向量，将没有poi的gid都映射到零向量上
-                idx[i] = gl_gid2poi.get(gid,zero_poi)
+                idx[i] = gl_gid2poi.get(gid, zero_poi)
             gnn_embeddings = self.node2vec(idx)
             poi_embeddings = self.GCN(gnn_embeddings)
-            poi_embeddings = poi_embeddings.view(dists.size(0),dists.size(1),poi_embeddings.size(-1))
+            poi_embeddings = poi_embeddings.view(dists.size(0), dists.size(1), poi_embeddings.size(-1))
             embs = torch.cat([embs, poi_embeddings], -1)
         # apply layer normalization on the expectation
         if self.norm:
@@ -166,7 +167,7 @@ class Embed(nn.Module):
             # 2.batch_emb = self.embedding(x)，表示node2vec
             # 若在gl_gid2poi中找不到poi，则说明这个点附近没有可用的poi，那么理论上来说，应该给这个点设置一个空poi，之后会设置成矩阵的最后一个向量。
             # zero_poi是一个等长的零向量，将没有poi的gid都映射到零向量上
-            poi_id_ = [[gl_gid2poi.get(p,zero_poi) for p in seq] for seq in poi_x]
+            poi_id_ = [[gl_gid2poi.get(p, zero_poi) for p in seq] for seq in poi_x]
             poi_id = torch.tensor(poi_id_).to(x)
             gnn_embeddings = self.node2vec(poi_id)
             # 3.batch_emb = self.GCN(batch_emb)，经过一个全连接层得到最后的表征向量

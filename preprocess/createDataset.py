@@ -1,6 +1,8 @@
+import csv
 import os
 import sys
 
+from sys_config import DATA_DIR
 
 sys.path.append('/home/hch/Desktop/trjcompress/')
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -8,19 +10,17 @@ import pickle
 
 from preprocess.SpatialRegionTools import trip2seq, str2trip, seq2str, createVocab_save
 
-datasets_ = "tdrive"
-# todo 完成数据集的重新生成
+# you can change the datasets size and trajectory length from here.
 def createTrainVal(region, trjfile,
                    # 60%,20%,20%
                    ntrain=3000, nval=1000, neval=1000,
-                   min_length=30, max_length=60):
-    # seq2str(seq) = join(map(string, seq), " ") * "\n"
+                   min_length=30, max_length=400):
 
     with open(trjfile, "r") as f:
         ss = f.readlines()
-        trainsrc = open(f"../datasets/{datasets_}/train.src", "w")
-        validsrc = open(f"../datasets/{datasets_}/val.src", "w")
-        evalsrc = open(f"../datasets/{datasets_}/eval.src", "w")
+        trainsrc = open(os.path.join(DATA_DIR, "train.src"), "w")
+        validsrc = open(os.path.join(DATA_DIR, "val.src"), "w")
+        evalsrc = open(os.path.join(DATA_DIR, "eval.src"), "w")
         cnt = 1
         sum_ = 0
 
@@ -40,13 +40,8 @@ def createTrainVal(region, trjfile,
             for trip in trips:
                 trg = trip2seq(region, trip)
                 trg_str, leng = seq2str(trg)
-                # print(leng)
-                # if leng == 0:
-                #     print()
                 if not (min_length <= leng <= max_length):
                     continue
-                # trg_str = [str(k) for k in trg]
-                # trg_str = " ".join(trg_str)
                 sum_ += 1
                 trg_str = trg_str.strip(" ")
                 trg_str = trg_str.strip("\n")
@@ -68,10 +63,31 @@ def createTrainVal(region, trjfile,
                 print("Scaned ", i, " trips...")
         trainsrc.close(), validsrc.close(), evalsrc.close()
     print(sum_)
-path = "../datasets/beijing.pos"
-# path = "../datasets/porto.pos"
-# createVocab_save(path)
-with open(f'../datasets/{datasets_}/pickle.txt', 'rb') as f:
-    var_a = pickle.load(f)
-region = pickle.loads(var_a)
-createTrainVal(region, path)
+
+
+def parseCSV():
+    res = []
+    i = 0
+    with open('../datasets/porto.csv', 'r') as f:
+
+        f_csv = csv.reader(f)
+        headers = next(f_csv)
+        for row in f_csv:
+            pos = row[8]
+            res.append(pos)
+
+    with open('../datasets/porto.pos', 'w') as f:
+        for it in res:
+            i += 1
+            if i > 100000:
+                break
+            f.write(it + "\n")
+
+
+if __name__ == '__main__':
+    path = "your_pos_file_dir"
+    createVocab_save(path)
+    with open(os.path.join(DATA_DIR, "pickle.txt"), 'rb') as f:
+        var_a = pickle.load(f)
+    region = pickle.loads(var_a)
+    createTrainVal(region, path)
