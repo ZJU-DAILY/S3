@@ -5,12 +5,9 @@ from itertools import groupby
 
 import functools
 import torch
-import random
 from scipy.spatial import KDTree
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-
-from RL.data_utils import angle
 from modules.data.collates import Seq2SeqOOVCollate
 from modules.data.datasets import AEDataset
 from modules.models import Seq2Seq2Seq
@@ -20,6 +17,15 @@ import numpy as np
 from models.s3_losses import r
 import os
 from sys_config import DATA_DIR
+
+def angle(v1):
+    dx1 = v1[2] - v1[0]
+    dy1 = v1[3] - v1[1]
+    angle1 = math.atan2(dy1, dx1)
+    if angle1 >= 0:
+        return angle1
+    else:
+        return 2 * math.pi + angle1
 
 
 def cleanTrj(src):

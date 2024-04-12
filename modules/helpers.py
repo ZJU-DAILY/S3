@@ -3,12 +3,6 @@ import functools
 import torch
 from numpy import mean
 from torch.nn import functional as F
-from torch.nn.functional import gumbel_softmax
-from preprocess.SpatialRegionTools import cell2gps, lonlat2meters, cell2meters
-from sklearn.neighbors import KDTree
-import numpy as np
-import math
-from RL.data_utils import angle
 
 
 def sequence_mask(lengths, max_len=None):
