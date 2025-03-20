@@ -31,6 +31,7 @@ Besides, prepare the roadmap data named as "edge.edgelist" which is correspondin
 ```shell
 python preprocess/node2vec_main.py --input datasets/edge.edgelist --output datasets/beijing.emd
 ```
+Note: the roadmap data of tdrive datasets can be downloaded in [repo](https://github.com/ZJU-DAILY/ST2Vec/tree/main/data/tdrive/road).
 
 ## Running Procedures
 
